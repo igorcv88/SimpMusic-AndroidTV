@@ -26,6 +26,54 @@ lint: the scraper's global protobuf exclusion otherwise crashes lint with missin
 ProtocolMessageEnum. The override affects androidLintTool only and does not change APK dependencies
 or the core submodule.
 
+## Remote control on the existing screens
+
+There are no TV-only screens. The shared `composeApp` UI detects a TV once, at the `App()` root
+(`rememberTvDevice()`: `FEATURE_LEANBACK` or `UI_MODE_TYPE_TELEVISION`), and exposes it as
+`LocalTvDevice`. Every helper in `ui/tv/TvInput.kt` returns the modifier unchanged when that is
+false, so phone and desktop keep their behavior; Desktop (`jvmMain`) and iOS answer `false`.
+
+- `tvFocusIndicator()` marks focus the way TV launchers do: the element scales to 1.06 and gets
+  a soft white backing (16% alpha) in its own shape, with no outline, and layout does not move.
+  The backing follows the element's likely outline (a circle on square elements, a capsule on
+  pills, a 16dp corner otherwise) because most call sites sit behind a `clip(...)`.
+- `tvClickable`/`tvCombinedClickable` are Foundation's `clickable`/`combinedClickable` with that
+  ring. Files import them under the original names (`import ...tvClickable as clickable`), so
+  call sites stay untouched and the upstream diff is the import line.
+- Material buttons (`Button`, `TextButton`, `IconButton`, radio buttons) take
+  `modifier = Modifier.tvFocusIndicator()`, since they do not go through `clickable`.
+- `tvRemoteActions` gives pointer-only surfaces (`pointerInput`/`detectTapGestures`, the mini
+  player swipe) OK, long-press OK and left/right actions; the touch gestures stay attached.
+- `tvSliderKeys` moves seek, volume, speed and equalizer controls by a fixed step on the arrows
+  along the slider's axis. The equalizer bands need OK to start editing, so up/down still
+  leaves the curve; OK or Back ends editing.
+- `focusable(true)` on marquee titles and card children became `focusable(!LocalTvDevice.current)`,
+  so the D-pad stops once per card instead of twice.
+- `tvFocusRestorer()` on lists and carousels returns focus to the last item after Back;
+  `tvInitialFocus()` puts focus on the player's dismiss/play control when it opens.
+- The login WebView is focusable on TV and requests focus, so the TV keyboard reaches Google's
+  fields. The login screen itself is the existing `LogInScreen`.
+
+The tablet layout's Now Playing side panel (35% of the width) and floating mini player do not
+work from a couch: the panel leaves the video small, and the capsule was only reachable by going
+down the rail. On a TV, `App.kt` therefore routes them to existing pieces instead:
+
+- Opening Now Playing navigates to the existing `FullscreenPlayer` (`FullscreenDestination`), the
+  same screen phones use for fullscreen video. Audio tracks show the artwork with the synced
+  lyric line, videos play full screen. On TV its controls show on entry with focus on
+  play/pause, any OK/up/down brings them back (the waking key is swallowed so it presses
+  nothing), and they hide 5 s after the last key; left/right on the bare picture seek 5 s. A
+  queue button opens the existing `QueueBottomSheet`. Back leaves the player and playback goes on;
+  the nav graph does not reopen the Now Playing sheet afterwards on TV.
+- The floating mini player is hidden. `TvNowPlayingChip` sits in Home's top bar between the
+  profile and the chips, Spotify TV style: artwork, then "Now Playing" over the track name. OK
+  opens the player, holding OK plays or pauses. Other tabs have no mini player yet (P1B).
+
+Not adapted in this PR: Library, playlists, album and artist pages beyond the shared list and
+card components they reuse, Listen Together, Wrapped, and settings sub-screens other than the
+equalizer, audio effects and the dialogs in `SettingScreen`. They are reachable, but some
+controls there may lack the focus ring or a remote equivalent for a gesture (P1B).
+
 ## Package proposal
 
 A future ID such as `io.github.igorcv88.simpmusic.tv` would identify the fork more clearly.
