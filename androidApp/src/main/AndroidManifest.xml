@@ -29,6 +29,13 @@
     <uses-feature
         android:name="android.hardware.type.automotive"
         android:required="false" />
+    <!-- Android TV devices commonly have no touchscreen. Keep phone compatibility. -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.leanback"
+        android:required="false" />
     <!-- Requesting CAMERA implies a required camera, which would hide the app from TVs and cars. -->
     <uses-feature
         android:name="android.hardware.camera"
@@ -68,6 +75,7 @@
         android:name=".SimpMusicApplication"
         android:allowBackup="true"
         android:appCategory="audio"
+        android:banner="@drawable/tv_banner"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -98,6 +106,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.APP_MUSIC" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- TV home launch is independent from the phone launcher and deep links.
+                 This only makes the app discoverable; D-pad UI is a later milestone. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
 
             <!-- Car App Library: host asks to surface the media playback screen
