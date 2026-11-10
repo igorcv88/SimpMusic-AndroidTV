@@ -13,7 +13,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -111,6 +110,8 @@ import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.UIEvent
 import org.jetbrains.compose.resources.stringResource
 import simpmusic.composeapp.generated.resources.Res
@@ -118,6 +119,7 @@ import simpmusic.composeapp.generated.resources.crossfading
 import simpmusic.composeapp.generated.resources.live_badge
 import kotlin.math.roundToLong
 import org.koin.compose.koinInject
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /** Which body the dock is currently showing. Held by the top-level Apple Music composable. */
 internal enum class AppleMusicView { MAIN, LYRICS, QUEUE }
@@ -328,7 +330,7 @@ internal fun AppleMusicGlyphButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.appleMusicPressInflate().size(size).clip(CircleShape),
+        modifier = (modifier.appleMusicPressInflate().size(size).clip(CircleShape)).tvFocusIndicator(),
     ) {
         Icon(imageVector = icon, contentDescription = "", tint = tint)
     }
@@ -497,7 +499,14 @@ internal fun AppleMusicThinSlider(
             value = value,
             onValueChange = onValueChange,
             onValueChangeFinished = onValueChangeFinished,
-            modifier = modifier,
+            modifier = modifier
+                .tvSliderKeys(
+                    value = value,
+                    range = 0f..1f,
+                    step = 0.01f,
+                    onChange = onValueChange,
+                    onFinished = onValueChangeFinished,
+                ),
             interactionSource = interactionSource,
             track = {
                 // Hand-drawn instead of SliderDefaults.Track. M3 rounds each half of the track with
@@ -710,7 +719,7 @@ internal fun AppleMusicTransportRow(
         }
         IconButton(
             onClick = { if (controllerState.isPreviousAvailable) onUIEvent(UIEvent.Previous) },
-            modifier = Modifier.appleMusicPressInflate().size(56.dp).clip(CircleShape),
+            modifier = Modifier.appleMusicPressInflate().size(56.dp).clip(CircleShape).tvFocusIndicator(),
         ) {
             Icon(
                 imageVector = SimpIcons.FastRewind,
@@ -742,7 +751,7 @@ internal fun AppleMusicTransportRow(
         }
         IconButton(
             onClick = { if (controllerState.isNextAvailable) onUIEvent(UIEvent.Next) },
-            modifier = Modifier.appleMusicPressInflate().size(56.dp).clip(CircleShape),
+            modifier = Modifier.appleMusicPressInflate().size(56.dp).clip(CircleShape).tvFocusIndicator(),
         ) {
             Icon(
                 imageVector = SimpIcons.FastForward,

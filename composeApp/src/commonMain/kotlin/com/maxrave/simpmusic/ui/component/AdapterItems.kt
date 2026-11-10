@@ -1,9 +1,5 @@
 package com.maxrave.simpmusic.ui.component
 
-import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
-
-import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -12,8 +8,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
-import com.maxrave.simpmusic.ui.tv.tvCombinedClickable as combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -123,6 +117,9 @@ import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.LocalForceDarkText
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.viewModel.HomeViewModel
 import com.maxrave.simpmusic.viewModel.base.BaseViewModel
 import org.jetbrains.compose.resources.painterResource
@@ -140,6 +137,8 @@ import simpmusic.composeapp.generated.resources.radio
 import simpmusic.composeapp.generated.resources.subscribers
 import simpmusic.composeapp.generated.resources.wrapped_recap_subtitle
 import simpmusic.composeapp.generated.resources.you
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
+import com.maxrave.simpmusic.ui.tv.tvCombinedClickable as combinedClickable
 
 @Composable
 fun HomeItem(
@@ -165,7 +164,7 @@ fun HomeItem(
     Column {
         HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
         LazyRow(
-            modifier = (Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior)).tvFocusRestorer(),
+            modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior).tvFocusRestorer(),
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
         ) {
@@ -213,7 +212,7 @@ fun HomeSectionHeader(
         modifier =
             if (channelId != null) {
                 Modifier
-                    .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+                    .focusable(!LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         navController.navigate(
@@ -225,7 +224,7 @@ fun HomeSectionHeader(
             } else if (moreEndpoint != null) {
                 // The section title carries the same endpoint as its "More" button, as on the web.
                 Modifier
-                    .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+                    .focusable(!LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
             } else {
@@ -305,7 +304,7 @@ fun SectionHeaderButton(
         TextButton(
             onClick = onClick,
             // Any non-zero minimum here keeps TextButton's own 40dp minimum height from applying.
-            modifier = (Modifier.defaultMinSize(minHeight = 1.dp)).tvFocusIndicator(),
+            modifier = Modifier.defaultMinSize(minHeight = 1.dp).tvFocusIndicator(),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
             colors =
                 ButtonDefaults
@@ -563,7 +562,7 @@ fun HomeItemContentPlaylist(
         Modifier
             .then(hoverModifier)
             .wrapContentSize()
-            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -825,7 +824,7 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
-                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+                .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -889,7 +888,7 @@ fun QuickPicksItem(
                 )
                 val subtitleRowState = rememberLazyListState()
                 LazyRow(
-                    modifier = (Modifier.mouseDragScroll(subtitleRowState)).tvFocusRestorer(),
+                    modifier = Modifier.mouseDragScroll(subtitleRowState).tvFocusRestorer(),
                     state = subtitleRowState,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -949,7 +948,7 @@ fun HomeItemSong(
             Modifier
                 .then(hoverModifier)
                 .fillMaxSize()
-                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+                .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -1060,7 +1059,7 @@ fun HomeItemVideo(
         Modifier
             .then(hoverModifier)
             .fillMaxSize()
-            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -1179,7 +1178,7 @@ fun HomeItemArtist(
     Box(
         Modifier
             .fillMaxSize()
-            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1298,7 +1297,7 @@ fun ItemVideoChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1398,7 +1397,7 @@ fun ItemArtistChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1499,7 +1498,7 @@ fun ItemTrackChart(
         modifier =
             Modifier
                 .wrapContentSize()
-                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
+                .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
                     onClick()
@@ -1623,10 +1622,11 @@ fun MoodAndGenresContentItem(
         val rowState = rememberLazyListState()
         LazyRow(
             modifier =
-                (Modifier
+                Modifier
                     .padding(
                         10.dp,
-                    ).mouseDragScroll(rowState)).tvFocusRestorer(),
+                    ).mouseDragScroll(rowState)
+                    .tvFocusRestorer(),
             state = rowState,
         ) {
             val itemList =

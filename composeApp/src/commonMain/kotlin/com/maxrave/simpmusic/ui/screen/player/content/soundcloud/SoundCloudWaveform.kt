@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.maxrave.domain.mediaservice.player.WAVEFORM_BARS_PER_SECOND
 import com.maxrave.simpmusic.extension.formatDuration
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
@@ -77,6 +78,7 @@ internal fun SoundCloudWaveform(
     onScrubEnd: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var remoteScrubMs by remember(mediaId) { mutableStateOf(0L) }
     val density = LocalDensity.current
     // The step and the bar width are whole pixels, so every bar sits at the same fraction of a pixel and
     // the waveform glides as one. With a 3.8px step each bar landed on a different fraction, sharp
@@ -129,6 +131,14 @@ internal fun SoundCloudWaveform(
             modifier
                 .fillMaxWidth()
                 .height(WAVEFORM_HEIGHT)
+                .then(if (durationMs > 0) Modifier.tvSliderKeys(
+                    value = elapsedSecondMs.toFloat(),
+                    range = 0f..durationMs.toFloat(),
+                    step = 5000f,
+                    onChange = { remoteScrubMs = it.toLong(); onScrubStart(); onScrub(remoteScrubMs) },
+                    onFinished = { onScrubEnd(remoteScrubMs) },
+                    customSurface = true,
+                ) else Modifier)
                 .pointerInput(pxPerMs) {
                     var scrubMs = 0L
                     detectHorizontalDragGestures(

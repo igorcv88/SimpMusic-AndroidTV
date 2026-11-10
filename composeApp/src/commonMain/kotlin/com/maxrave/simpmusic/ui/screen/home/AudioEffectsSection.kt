@@ -36,6 +36,8 @@ import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.icon.Help
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.SettingsViewModel
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -309,7 +311,7 @@ private fun ReverbHelpDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, modifier = Modifier.tvFocusIndicator()) {
                 Text(text = stringResource(Res.string.ok))
             }
         },
@@ -424,7 +426,14 @@ private fun EffectSlider(
                 onValueChange = { draft = snap(it).coerceIn(valueRange.start, valueRange.endInclusive) },
                 onValueChangeFinished = { draft?.let(onCommit) },
                 valueRange = valueRange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .tvSliderKeys(
+                        value = shown,
+                        range = valueRange,
+                        step = (valueRange.endInclusive - valueRange.start) / 100f,
+                        onChange = { draft = snap(it).coerceIn(valueRange.start, valueRange.endInclusive) },
+                        onFinished = { draft?.let(onCommit) },
+                    ),
             )
             Text(
                 text = readout(shown),

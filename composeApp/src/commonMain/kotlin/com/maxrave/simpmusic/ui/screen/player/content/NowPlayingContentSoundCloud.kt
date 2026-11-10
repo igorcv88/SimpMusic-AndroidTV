@@ -13,7 +13,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -144,6 +143,8 @@ import com.maxrave.simpmusic.ui.screen.player.content.soundcloud.rememberSteadyP
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvInitialFocus
 import com.maxrave.simpmusic.viewModel.SoundCloudPlayerViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.delay
@@ -157,6 +158,7 @@ import simpmusic.composeapp.generated.resources.crossfading
 import simpmusic.composeapp.generated.resources.soundcloud_play_count_info
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * Now Playing laid out like SoundCloud's player (Mobbin, iOS 2024 and Android, and the owner's own
@@ -581,7 +583,7 @@ private fun NowPlayingSoundCloudLayout(
                         RoundButton(backdrop = backdrop, icon = SimpIcons.SkipPrevious, size = 52.dp, iconSize = 30.dp) {
                             actions.onUIEvent(UIEvent.Previous)
                         }
-                        RoundButton(backdrop = backdrop, icon = SimpIcons.PlayArrow, size = 76.dp, iconSize = 44.dp, onClick = togglePlayPause)
+                        RoundButton(backdrop = backdrop, icon = SimpIcons.PlayArrow, size = 76.dp, iconSize = 44.dp, modifier = Modifier.tvInitialFocus(), onClick = togglePlayPause)
                         RoundButton(
                             backdrop = backdrop,
                             icon = SimpIcons.SkipNext,
@@ -1013,12 +1015,13 @@ private fun RoundButton(
     iconSize: Dp,
     enabled: Boolean = true,
     tint: Color = MaterialTheme.colorScheme.onSurface,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     // A 1dp highlight, as on the other small round glass buttons: a circle this size catches only a
     // short arc of the default directional rim and reads as rimless.
-    LiquidGlassContainer(backdrop = backdrop, modifier = Modifier.size(size), highlight = Highlight(width = 1.dp)) {
-        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxSize()) {
+    LiquidGlassContainer(backdrop = backdrop, modifier = modifier.size(size), highlight = Highlight(width = 1.dp)) {
+        IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxSize().tvFocusIndicator()) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,

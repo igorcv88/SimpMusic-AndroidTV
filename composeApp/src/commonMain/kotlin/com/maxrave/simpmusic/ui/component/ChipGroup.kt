@@ -1,7 +1,5 @@
 package com.maxrave.simpmusic.ui.component
 
-import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
-
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
@@ -40,6 +38,7 @@ import com.materialkolor.ktx.toColor
 import com.materialkolor.ktx.toHct
 import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 
 @Composable
 fun Chip(

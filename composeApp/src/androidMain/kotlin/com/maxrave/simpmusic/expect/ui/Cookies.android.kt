@@ -36,6 +36,7 @@ import androidx.webkit.WebViewStartUpConfig
 import androidx.webkit.WebViewStartUpResult
 import androidx.webkit.WebViewStartupException
 import com.maxrave.logger.Logger
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import org.jetbrains.compose.resources.stringResource
@@ -171,6 +172,7 @@ actual fun DiscordWebView(
  */
 @Composable
 private fun ManagedWebView(configure: WebView.(onRendererGone: () -> Unit) -> Unit) {
+    val tvDevice = LocalTvDevice.current
     val appContext = LocalContext.current.applicationContext
     val unavailable = stringResource(Res.string.unavailable)
     var ready by remember { mutableStateOf(false) }
@@ -235,7 +237,13 @@ private fun ManagedWebView(configure: WebView.(onRendererGone: () -> Unit) -> Un
         else -> {
             AndroidView(
                 factory = { ctx ->
-                    webViewOrFallback(ctx, unavailable) { configure { rendererGone = true } }
+                    webViewOrFallback(ctx, unavailable) { configure { rendererGone = true } }.apply {
+                        if (tvDevice) {
+                            isFocusable = true
+                            isFocusableInTouchMode = true
+                            requestFocus()
+                        }
+                    }
                 },
                 onRelease = { view ->
                     (view as? WebView)?.run {

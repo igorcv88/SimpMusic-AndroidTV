@@ -10,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -182,6 +181,9 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.AlbumDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetUIEvent
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
@@ -303,6 +305,7 @@ import simpmusic.composeapp.generated.resources.your_youtube_cookie
 import simpmusic.composeapp.generated.resources.your_youtube_playlists
 import simpmusic.composeapp.generated.resources.youtube_transcript
 import simpmusic.composeapp.generated.resources.youtube_url
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sentinel value used by SleepTimerBottomSheet to signal "end of current song"
@@ -454,7 +457,7 @@ fun InfoPlayerBottomSheet(
                                     Spacer(Modifier.height(10.dp))
                                     OutlinedButton(onClick = {
                                         sharedViewModel.downloadFileDone()
-                                    }) { Text(stringResource(Res.string.ok)) }
+                                    }, modifier = Modifier.tvFocusIndicator()) { Text(stringResource(Res.string.ok)) }
                                 }
                             }
                             if (it.isDone) {
@@ -462,7 +465,7 @@ fun InfoPlayerBottomSheet(
                                     Spacer(Modifier.height(10.dp))
                                     OutlinedButton(onClick = {
                                         sharedViewModel.downloadFileDone()
-                                    }) { Text(stringResource(Res.string.ok)) }
+                                    }, modifier = Modifier.tvFocusIndicator()) { Text(stringResource(Res.string.ok)) }
                                 }
                             }
                         }
@@ -530,7 +533,7 @@ fun InfoPlayerBottomSheet(
                                 sheetState.hide()
                                 onDismiss()
                             }
-                        }) {
+                        }, modifier = Modifier.tvFocusIndicator()) {
                             Icon(
                                 imageVector = SimpIcons.KeyboardArrowDown,
                                 contentDescription = "",
@@ -942,7 +945,8 @@ fun InfoPlayerBottomSheet(
                         Modifier
                             .wrapContentSize()
                             .align(Alignment.CenterHorizontally)
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = 10.dp)
+                            .tvFocusIndicator(),
                 ) {
                     Text(text = stringResource(Res.string.download_this_song_video_file_to_your_device))
                 }
@@ -1112,7 +1116,7 @@ fun QueueBottomSheet(
                                 sheetState.hide()
                                 onDismiss()
                             }
-                        }) {
+                        }, modifier = Modifier.tvFocusIndicator()) {
                             Icon(
                                 imageVector = SimpIcons.KeyboardArrowDown,
                                 contentDescription = "",
@@ -1223,7 +1227,8 @@ fun QueueBottomSheet(
                                         overscrollJob?.cancel()
                                     },
                                 )
-                            },
+                            }
+                            .tvFocusRestorer(),
                 ) {
                     itemsIndexed(
                         queue,
@@ -1474,12 +1479,12 @@ fun NowPlayingBottomSheet(
                             cancel = true,
                         ),
                     )
-                }) {
+                }, modifier = Modifier.tvFocusIndicator()) {
                     Text(text = stringResource(Res.string.yes), style = typo().labelSmall)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { sleepTimerWarning = false }) {
+                TextButton(onClick = { sleepTimerWarning = false }, modifier = Modifier.tvFocusIndicator()) {
                     Text(text = stringResource(Res.string.cancel), style = typo().labelSmall)
                 }
             },
@@ -1582,12 +1587,13 @@ fun NowPlayingBottomSheet(
                         )
                         mainLyricsProvider = false
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Text(text = stringResource(Res.string.yes), style = typo().labelSmall)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { mainLyricsProvider = false }) {
+                TextButton(onClick = { mainLyricsProvider = false }, modifier = Modifier.tvFocusIndicator()) {
                     Text(text = stringResource(Res.string.cancel), style = typo().labelSmall)
                 }
             },
@@ -2159,7 +2165,14 @@ fun PlaybackSpeedPitchBottomSheet(
                 Spacer(modifier = Modifier.height(16.dp))
                 // Playback Speed row
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .tvSliderKeys(
+                            value = playbackSpeed,
+                            range = 0.2f..2f,
+                            step = 0.1f,
+                            onChange = { onSet(it, pitch) },
+                            customSurface = true,
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Image(
@@ -2177,6 +2190,7 @@ fun PlaybackSpeedPitchBottomSheet(
                                 pitch,
                             )
                         },
+                        modifier = Modifier.tvFocusIndicator(),
                     ) {
                         Icon(
                             SimpIcons.Remove,
@@ -2199,6 +2213,7 @@ fun PlaybackSpeedPitchBottomSheet(
                                 pitch,
                             )
                         },
+                        modifier = Modifier.tvFocusIndicator(),
                     ) {
                         Icon(
                             SimpIcons.Add,
@@ -2230,6 +2245,7 @@ fun PlaybackSpeedPitchBottomSheet(
                                 val newPitch = (pitch - 1).coerceIn(-12, 12)
                                 onSet(playbackSpeed, newPitch)
                             },
+                            modifier = Modifier.tvFocusIndicator(),
                         ) {
                             Icon(
                                 SimpIcons.Remove,
@@ -2249,6 +2265,7 @@ fun PlaybackSpeedPitchBottomSheet(
                                 val newPitch = (pitch + 1).coerceIn(-12, 12)
                                 onSet(playbackSpeed, newPitch)
                             },
+                            modifier = Modifier.tvFocusIndicator(),
                         ) {
                             Icon(
                                 SimpIcons.Add,
@@ -2373,7 +2390,7 @@ fun SleepTimerBottomSheet(
                                     showCustomInput = false
                                     customMinutes = ""
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).tvFocusIndicator(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors =
                                     ButtonDefaults.outlinedButtonColors(
@@ -2411,7 +2428,7 @@ fun SleepTimerBottomSheet(
                             showCustomInput = false
                             customMinutes = ""
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).tvFocusIndicator(),
                         shape = RoundedCornerShape(12.dp),
                         colors =
                             ButtonDefaults.outlinedButtonColors(
@@ -2439,7 +2456,7 @@ fun SleepTimerBottomSheet(
                             showCustomInput = true
                             selectedPreset = -1
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).tvFocusIndicator(),
                         shape = RoundedCornerShape(12.dp),
                         colors =
                             ButtonDefaults.outlinedButtonColors(
@@ -2536,7 +2553,7 @@ fun SleepTimerBottomSheet(
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().tvFocusIndicator(),
                     shape = RoundedCornerShape(12.dp),
                     colors =
                         ButtonDefaults.buttonColors(
@@ -2660,7 +2677,7 @@ fun AddToPlaylistModalBottomSheet(
                                 if (query.isEmpty()) {
                                     Spacer(modifier = Modifier.width(12.dp))
                                 } else {
-                                    IconButton(onClick = { query = "" }) {
+                                    IconButton(onClick = { query = "" }, modifier = Modifier.tvFocusIndicator()) {
                                         Icon(
                                             imageVector = SimpIcons.Close,
                                             contentDescription = null,
@@ -2968,7 +2985,7 @@ fun PlaylistBottomSheet(
                                 hideModalBottomSheet()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally),
+                        modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally).tvFocusIndicator(),
                     ) {
                         Text(text = stringResource(Res.string.save))
                     }
@@ -3160,7 +3177,7 @@ fun LocalPlaylistBottomSheet(
                                 hideModalBottomSheet()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally),
+                        modifier = Modifier.fillMaxWidth().align(Alignment.CenterHorizontally).tvFocusIndicator(),
                     ) {
                         Text(text = stringResource(Res.string.save))
                     }
@@ -3298,7 +3315,7 @@ fun SortPlaylistBottomSheet(
                             .padding(start = 16.dp, top = 16.dp, bottom = 24.dp)
                             .align(Alignment.Start),
                 )
-                LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp)) {
+                LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), modifier = Modifier.tvFocusRestorer()) {
                     items(filterOptions, key = { it.hashCode() }) { filterOption ->
                         val isSelected = filterOption == selectedState
                         Row(
@@ -3390,7 +3407,7 @@ fun DevLogInBottomSheet(
                             showToast(runBlocking { getString(Res.string.can_not_be_empty) }, ToastGravity.Bottom)
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).tvFocusIndicator(),
                 ) {
                     Text(text = stringResource(Res.string.set), style = typo().labelSmall)
                 }
@@ -3453,7 +3470,7 @@ fun DevCookieLogInBottomSheet(
                         IconButton(onClick = {
                             copyToClipboard(cookie.first, cookie.second ?: "")
                             showToast(copied, ToastGravity.Bottom)
-                        }) {
+                        }, modifier = Modifier.tvFocusIndicator()) {
                             Icon(imageVector = SimpIcons.ContentCopy, contentDescription = "Copy")
                         }
                     }

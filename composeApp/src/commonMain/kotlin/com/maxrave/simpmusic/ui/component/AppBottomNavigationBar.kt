@@ -1,13 +1,10 @@
 package com.maxrave.simpmusic.ui.component
 
-import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
-
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
-import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -25,8 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
@@ -48,11 +45,14 @@ import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestinatio
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import simpmusic.composeapp.generated.resources.*
 import kotlin.math.roundToInt
 import kotlin.reflect.KClass
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The phone bottom bar with liquid glass OFF: the same floating capsule-and-FAB form as the glass
@@ -399,7 +399,7 @@ fun AppNavigationRail(
     showMixForYouTab: Boolean = false,
     reloadDestinationIfNeeded: (KClass<*>) -> Unit = { _ -> },
 ) {
-    val tvDevice = com.maxrave.simpmusic.ui.tv.LocalTvDevice.current
+    val tvDevice = LocalTvDevice.current
     val initialFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(tvDevice) { if (tvDevice) initialFocus.requestFocus() }
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -485,7 +485,11 @@ fun AppNavigationRail(
                         }
                     }
                 },
-                modifier = Modifier.then(if (tvDevice && screen == bottomNavScreens.first()) Modifier.focusRequester(initialFocus) else Modifier).tvFocusIndicator(),
+                modifier =
+                    Modifier
+                        .then(
+                            if (tvDevice && screen == bottomNavScreens.first()) Modifier.focusRequester(initialFocus) else Modifier,
+                        ).tvFocusIndicator(),
             )
         }
         Spacer(Modifier.height(32.dp))

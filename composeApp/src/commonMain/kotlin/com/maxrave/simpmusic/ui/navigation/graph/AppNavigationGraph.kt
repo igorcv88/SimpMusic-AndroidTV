@@ -26,6 +26,7 @@ import com.maxrave.simpmusic.ui.screen.library.LibraryScreen
 import com.maxrave.simpmusic.ui.screen.library.MixForYouScreen
 import com.maxrave.simpmusic.ui.screen.other.SearchScreen
 import com.maxrave.simpmusic.ui.screen.player.FullscreenPlayer
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 
 @Composable
 @ExperimentalMaterial3Api
@@ -111,13 +112,16 @@ fun AppNavigationGraph(
             }
         }
         composable<FullscreenDestination> {
+            // On a TV this screen IS Now Playing, so leaving it goes back to the page underneath;
+            // reopening the sheet there would bring the player straight back.
+            val tvDevice = LocalTvDevice.current
             ForceDarkContent {
                 FullscreenPlayer(
                     navController,
                     hideNavBar = hideNavBar,
                     showNavBar = {
                         showNavBar.invoke(true)
-                        showNowPlayingSheet.invoke()
+                        if (!tvDevice) showNowPlayingSheet.invoke()
                     },
                 )
             }

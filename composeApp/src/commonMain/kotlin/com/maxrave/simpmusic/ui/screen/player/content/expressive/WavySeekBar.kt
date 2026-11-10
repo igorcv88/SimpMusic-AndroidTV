@@ -27,6 +27,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import kotlin.math.roundToInt
 
 /**
@@ -87,6 +88,14 @@ fun WavySeekBar(
                 .fillMaxWidth()
                 // ~40dp hit area — comfortably taller than the wave itself.
                 .height(40.dp)
+                .tvSliderKeys(
+                    value = progressFraction * 100f,
+                    range = 0f..100f,
+                    step = 1f,
+                    onChange = onSliderChange,
+                    onFinished = onSliderChangeFinished,
+                    customSurface = true,
+                )
                 .onSizeChanged { widthPx = it.width }
                 .pointerInput(Unit) {
                     detectTapGestures { offset ->

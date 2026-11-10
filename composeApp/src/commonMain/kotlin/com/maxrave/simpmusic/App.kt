@@ -107,6 +107,7 @@ import com.maxrave.simpmusic.ui.theme.desktopWindowLight
 import com.maxrave.simpmusic.ui.theme.fontFamily
 import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.isAppLinkAvailable
 import com.maxrave.simpmusic.utils.libraryTabOf
@@ -207,6 +208,16 @@ private fun AppContent(
     // Now playing screen
     var isShowNowPlaylistScreen by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    // On a TV the player is the fullscreen one: Now Playing opens it instead of the side panel or
+    // the sheet, and Home's top bar carries the mini player (TvNowPlayingChip).
+    val tvDevice = LocalTvDevice.current
+    LaunchedEffect(tvDevice, isShowNowPlaylistScreen) {
+        if (tvDevice && isShowNowPlaylistScreen) {
+            isShowNowPlaylistScreen = false
+            navController.navigate(FullscreenDestination)
+        }
     }
 
     // Fullscreen
@@ -641,7 +652,7 @@ private fun AppContent(
                 ) {
                     val tabletMiniPlayer: @Composable (Modifier) -> Unit = { modifier ->
                         androidx.compose.animation.AnimatedVisibility(
-                            visible = isShowMiniPlayer && isTablet && !isInFullscreen,
+                            visible = isShowMiniPlayer && isTablet && !isInFullscreen && !tvDevice,
                             modifier = modifier,
                             enter = fadeIn() + slideInHorizontally(),
                             exit = fadeOut(),
@@ -802,7 +813,7 @@ private fun AppContent(
                                 tabletMiniPlayer(Modifier.padding(innerPadding).align(Alignment.BottomCenter))
                             }
                         }
-                        if (isTablet && isTabletLandscape && !isInFullscreen) {
+                        if (isTablet && isTabletLandscape && !isInFullscreen && !tvDevice) {
                             AnimatedVisibility(
                                 isShowNowPlaylistScreen,
                                 enter = expandHorizontally() + fadeIn(),
@@ -873,7 +884,7 @@ private fun AppContent(
                     }
                 }
 
-                if (isShowNowPlaylistScreen && !isTabletLandscape) {
+                if (isShowNowPlaylistScreen && !isTabletLandscape && !tvDevice) {
                     ForceDarkContent {
                         NowPlayingScreen(
                             navController = navController,
