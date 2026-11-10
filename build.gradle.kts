@@ -65,3 +65,14 @@ subprojects {
         }
     }
 }
+
+// Keep lint's protobuf runtime separate from the scraper's APK-wide protobuf exclusion.
+// This matches lint-checks 32.5.0's own dependency, without changing core or the APK graph.
+project(":kotlinYtmusicScraper") {
+    val lintProtobuf = configurations.detachedConfiguration(
+        dependencies.create("com.google.protobuf:protobuf-java:3.25.5"),
+    ).apply { isTransitive = false }
+    configurations.matching { it.name == "androidLintTool" }.configureEach {
+        withDependencies { add(project.dependencies.create(files(lintProtobuf))) }
+    }
+}
