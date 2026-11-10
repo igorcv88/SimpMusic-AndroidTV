@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Initial 16:9 TV launcher banner. Replace with the approved TV brand artwork. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#101723"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#254366"
+        android:fillAlpha="0.55"
+        android:pathData="M0,0h185l-100,180h-85z" />
+    <path
+        android:fillColor="#416E91"
+        android:fillAlpha="0.4"
+        android:pathData="M230,0h90v180h-180z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.13"
+        android:pathData="M126,28h68a21,21 0,0 1,21 21v82a21,21 0,0 1,-21 21h-68a21,21 0,0 1,-21 -21v-82a21,21 0,0 1,21 -21z" />
+    <path
+        android:strokeColor="#E6F5FF"
+        android:strokeAlpha="0.7"
+        android:strokeWidth="1"
+        android:fillColor="#00FFFFFF"
+        android:pathData="M126,28h68a21,21 0,0 1,21 21v82a21,21 0,0 1,-21 21h-68a21,21 0,0 1,-21 -21v-82a21,21 0,0 1,21 -21z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M180,57v47.5c-4,-2.5 -10,-3.3 -16,-1.6c-10.3,2.7 -16.8,10.8 -14.6,18.2c2.2,7.3 12.3,10.9 22.6,8.1c8.7,-2.4 14.7,-8.6 15,-15.1v-39l20,-5.3v-15z" />
+</vector>
