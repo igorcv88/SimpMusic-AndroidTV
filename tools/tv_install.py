@@ -15,8 +15,8 @@ A build signed with another key cannot update the app on the TV (INSTALL_FAILED_
 That is reported and nothing else happens: removing the old build also removes its data, the signed-in
 account among it. --uninstall-first does that removal, and only when it is given.
 
-Release builds check the signing certificate against upstream's (the "unofficial build" screen), so a
-release signed with the TV key opens on that screen; the debug build skips the check.
+The isolated tvAndroidApp checks its own TV certificate in both debug and release.
+The original phone app and its upstream official-build policy are unchanged.
 
 Exit status: 0 installed (or built, with --build-only); 1 the build, the check or the install failed;
 2 refused before anything was built or installed - a bad argument, no secrets.env, a TV not reached;
@@ -37,10 +37,10 @@ if str(HERE) not in sys.path:
 import tv_signing  # noqa: E402
 
 ROOT = HERE.parent
-APK_DIR = ROOT / "androidApp" / "build" / "outputs" / "apk"
+APK_DIR = ROOT / "tvAndroidApp" / "build" / "outputs" / "apk"
 MIN_SDK = 26
 REMOTE_APK = "/data/local/tmp/simpmusic-tv-install.apk"
-PACKAGES = {"debug": "com.maxrave.simpmusic.dev", "release": "com.maxrave.simpmusic"}
+PACKAGES = {"debug": "com.maxrave.simpmusic.tv", "release": "com.maxrave.simpmusic.tv"}
 INCOMPATIBLE = "INSTALL_FAILED_UPDATE_INCOMPATIBLE"
 STUDIO_JDKS = (Path(r"C:\Program Files\Android\Android Studio\jbr"),
                Path("/Applications/Android Studio.app/Contents/jbr/Contents/Home"),
@@ -87,7 +87,7 @@ def java_home():
 
 def gradle_command(kind, properties, full=False):
     wrapper = str(ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew"))
-    task = f":androidApp:assemble{kind.capitalize()}"
+    task = f":tvAndroidApp:assemble{kind.capitalize()}"
     command = [wrapper, task, f"-PtvSigning={properties}"]
     if full:
         command.append("-PisFullBuild=true")
@@ -110,7 +110,7 @@ def build(kind, secrets, full=False):
 def built_apks(kind, folder=APK_DIR):
     """{abi or 'universal': path} for the APKs `assemble<Kind>` left in the outputs folder."""
     apks = {}
-    pattern = re.compile(rf"androidApp-(?:(.+)-)?{kind}\.apk$")
+    pattern = re.compile(rf"tvAndroidApp-(?:(.+)-)?{kind}\.apk$")
     for apk in sorted((folder / kind).glob("*.apk")):
         match = pattern.match(apk.name)
         if match:

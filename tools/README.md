@@ -3,7 +3,8 @@
 Scripts for building, installing, checking and measuring SimpMusic on an Android TV over network ADB.
 Most of them come from the CleanYourTV toolkit (MIT, see [LICENSE-CleanYourTV](LICENSE-CleanYourTV)) and
 were adapted from a launcher to an app: they start SimpMusic through its `LEANBACK_LAUNCHER` entry, the
-same intent the TV's home screen sends, and default to the debug package `com.maxrave.simpmusic.dev`.
+same intent the TV's home screen sends, and accept `--package com.maxrave.simpmusic.tv` for the isolated native TV app.
+`tv_install.py` builds `:tvAndroidApp` by default; the phone app is never removed.
 Issue numbers such as `#105` in their comments refer to the upstream CleanYourTV repository, not to this one.
 
 They need Python 3.9 or later. The TV tools also need the packages in `requirements.txt`:
@@ -80,10 +81,10 @@ To use Google's adb and a transport it already holds (including encrypted Wirele
 ## Signing
 
 Every build installed on the TV is signed with one key, so each build installs over the last one and the
-app keeps its data and sign-in. `androidApp/build.gradle.kts` takes it as an optional Gradle property:
+app keeps its data and sign-in. `tvAndroidApp/build.gradle.kts` takes it as an optional Gradle property:
 
 ```bash
-./gradlew :androidApp:assembleDebug -PtvSigning=<properties file>
+./gradlew :tvAndroidApp:assembleDebug -PtvSigning=<properties file>
 ```
 
 The file holds `storeFile`, `storePassword`, `keyAlias` and `keyPassword`. Without the property the build
@@ -101,18 +102,17 @@ In CI, the *Android TV APK* workflow (`.github/workflows/tv-apk.yml`) reads the 
 `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`. Both paths check the result with
 `apksigner` against the certificate digest in `tools/tv_signing.py`, and refuse any other certificate.
 
-Install the **debug** build on the TV. A release build compares its signing certificate with upstream's
-published keys and shows the "unofficial build" screen when it is signed with any other key; debug builds
-skip that check. A build signed with another key (the Android debug key, say) cannot update one signed
-with the TV key: `tv_install.py` stops with exit 3 and changes nothing. `--uninstall-first` removes the
-app first, and its data with it.
+The native TV app uses `com.maxrave.simpmusic.tv` for debug and release. Its Activity checks the
+fork's TV certificate; upstream's phone verification is unchanged. Every installed build must carry
+the TV key. A different key still exits 3 without changing the installed app. `--uninstall-first`
+removes app data and needs the user's explicit authorization.
 
 ```bash
 TV_HOST=192.168.1.50 tools/venv/bin/python -I tools/tv_install.py
-TV_HOST=192.168.1.50 tools/venv/bin/python -I tools/tv_smoke.py
+TV_HOST=192.168.1.50 tools/venv/bin/python -I tools/tv_smoke.py --package com.maxrave.simpmusic.tv
 ```
 
-`tv_smoke.py` saves its evidence under `smoke/`, which is gitignored: screenshots and logs can show account
+`tv_smoke.py` saves the complete logcat, media session dump and screenshot as local evidence under `smoke/`, which is gitignored: screenshots and logs can show account
 names.
 
 ## Performance
