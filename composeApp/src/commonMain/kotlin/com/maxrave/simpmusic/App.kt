@@ -143,9 +143,22 @@ import simpmusic.composeapp.generated.resources.update_message
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class, ExperimentalFoundationApi::class)
 @Composable
 fun App(
+    viewModel: SharedViewModel = koinInject(),
+    showDesktopNotificationPermissionDialog: Boolean = false,
+    onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
+    onOpenDesktopNotificationSettings: (doNotShowAgain: Boolean) -> Unit = {},
+) {
+    CompositionLocalProvider(com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice()) {
+        AppContent(viewModel, showDesktopNotificationPermissionDialog,
+            onDismissDesktopNotificationPermissionDialog, onOpenDesktopNotificationSettings)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class, ExperimentalFoundationApi::class)
+@Composable
+private fun AppContent(
     viewModel: SharedViewModel = koinInject(),
     showDesktopNotificationPermissionDialog: Boolean = false,
     onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
