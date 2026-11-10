@@ -1,5 +1,9 @@
 package com.maxrave.simpmusic.ui.screen.home
 
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -13,7 +17,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -718,14 +722,18 @@ fun HomeScreen(
                 TextButton(onClick = {
                     viewModel.doneShowLogInAlert(doNotShowAgain)
                     navController.navigate(LoginDestination)
-                }) {
+                },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(Res.string.go_to_log_in_page))
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.doneShowLogInAlert(doNotShowAgain)
-                }) {
+                },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(Res.string.cancel))
                 }
             },
@@ -781,6 +789,7 @@ fun HomeScreen(
                     LazyColumn(
                         state = scrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.tvFocusRestorer(),
                     ) {
                         itemsIndexed(homeShelves, key = { _, item ->
                             item.hashCode().toString() + (mainHomeThumbnail ?: "nothumb")
@@ -1283,9 +1292,9 @@ private fun HomeAccountButton(
                         navController.navigate(LoginDestination)
                     },
                     modifier =
-                        Modifier
+                        (Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = 16.dp, vertical = 4.dp)).tvFocusIndicator(),
                 ) {
                     Text(stringResource(Res.string.log_in_to_YouTube), color = LocalContentColor.current)
                 }
@@ -1568,7 +1577,7 @@ fun ChartData(
             val lazyListState = rememberLazyListState()
             val snapperFlingBehavior = rememberSnapFlingBehavior(SnapLayoutInfoProvider(lazyListState = lazyListState))
             LazyRow(
-                modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior),
+                modifier = (Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior)).tvFocusRestorer(),
                 state = lazyListState,
                 flingBehavior = snapperFlingBehavior,
             ) {

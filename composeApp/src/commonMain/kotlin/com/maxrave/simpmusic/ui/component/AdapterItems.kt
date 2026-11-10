@@ -1,5 +1,9 @@
 package com.maxrave.simpmusic.ui.component
 
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -8,8 +12,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
+import com.maxrave.simpmusic.ui.tv.tvCombinedClickable as combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -161,7 +165,7 @@ fun HomeItem(
     Column {
         HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
         LazyRow(
-            modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior),
+            modifier = (Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior)).tvFocusRestorer(),
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
         ) {
@@ -209,7 +213,7 @@ fun HomeSectionHeader(
         modifier =
             if (channelId != null) {
                 Modifier
-                    .focusable(true)
+                    .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         navController.navigate(
@@ -221,7 +225,7 @@ fun HomeSectionHeader(
             } else if (moreEndpoint != null) {
                 // The section title carries the same endpoint as its "More" button, as on the web.
                 Modifier
-                    .focusable(true)
+                    .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
             } else {
@@ -301,7 +305,7 @@ fun SectionHeaderButton(
         TextButton(
             onClick = onClick,
             // Any non-zero minimum here keeps TextButton's own 40dp minimum height from applying.
-            modifier = Modifier.defaultMinSize(minHeight = 1.dp),
+            modifier = (Modifier.defaultMinSize(minHeight = 1.dp)).tvFocusIndicator(),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
             colors =
                 ButtonDefaults
@@ -559,7 +563,7 @@ fun HomeItemContentPlaylist(
         Modifier
             .then(hoverModifier)
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -821,7 +825,7 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
-                .focusable(true)
+                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -885,7 +889,7 @@ fun QuickPicksItem(
                 )
                 val subtitleRowState = rememberLazyListState()
                 LazyRow(
-                    modifier = Modifier.mouseDragScroll(subtitleRowState),
+                    modifier = (Modifier.mouseDragScroll(subtitleRowState)).tvFocusRestorer(),
                     state = subtitleRowState,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -945,7 +949,7 @@ fun HomeItemSong(
             Modifier
                 .then(hoverModifier)
                 .fillMaxSize()
-                .focusable(true)
+                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -1056,7 +1060,7 @@ fun HomeItemVideo(
         Modifier
             .then(hoverModifier)
             .fillMaxSize()
-            .focusable(true)
+            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -1175,7 +1179,7 @@ fun HomeItemArtist(
     Box(
         Modifier
             .fillMaxSize()
-            .focusable(true)
+            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1294,7 +1298,7 @@ fun ItemVideoChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1394,7 +1398,7 @@ fun ItemArtistChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1495,7 +1499,7 @@ fun ItemTrackChart(
         modifier =
             Modifier
                 .wrapContentSize()
-                .focusable(true)
+                .focusable(!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
                     onClick()
@@ -1619,10 +1623,10 @@ fun MoodAndGenresContentItem(
         val rowState = rememberLazyListState()
         LazyRow(
             modifier =
-                Modifier
+                (Modifier
                     .padding(
                         10.dp,
-                    ).mouseDragScroll(rowState),
+                    ).mouseDragScroll(rowState)).tvFocusRestorer(),
             state = rowState,
         ) {
             val itemList =

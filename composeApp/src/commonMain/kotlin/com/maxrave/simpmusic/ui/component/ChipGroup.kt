@@ -1,5 +1,7 @@
 package com.maxrave.simpmusic.ui.component
 
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandHorizontally
@@ -220,7 +222,7 @@ private fun ChipBody(
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         ElevatedFilterChip(
-            modifier = if (compact) modifier.height(28.dp) else modifier,
+            modifier = (if (compact) modifier.height(28.dp) else modifier).tvFocusIndicator(),
             shape = CircleShape,
             // No shadow. An unselected chip has no fill, and a drop shadow under a see-through
             // shape shows THROUGH it as a dark ring instead of sitting behind it. Naming

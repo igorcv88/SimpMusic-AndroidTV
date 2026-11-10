@@ -1,11 +1,13 @@
 package com.maxrave.simpmusic.ui.component
 
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -23,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -396,6 +399,9 @@ fun AppNavigationRail(
     showMixForYouTab: Boolean = false,
     reloadDestinationIfNeeded: (KClass<*>) -> Unit = { _ -> },
 ) {
+    val tvDevice = com.maxrave.simpmusic.ui.tv.LocalTvDevice.current
+    val initialFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(tvDevice) { if (tvDevice) initialFocus.requestFocus() }
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     // See the note in AppBottomNavigationBar: `ordinal` is the tab's identity, not its position.
     val bottomNavScreens =
@@ -479,6 +485,7 @@ fun AppNavigationRail(
                         }
                     }
                 },
+                modifier = Modifier.then(if (tvDevice && screen == bottomNavScreens.first()) Modifier.focusRequester(initialFocus) else Modifier).tvFocusIndicator(),
             )
         }
         Spacer(Modifier.height(32.dp))
