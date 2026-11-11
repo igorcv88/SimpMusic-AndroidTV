@@ -1161,7 +1161,7 @@ fun SearchScreen(
                 },
                 placeholder = { Text(placeholderTexts[0], style = typo().labelMedium) },
                 leadingIcon = { Icon(SimpIcons.Search, contentDescription = null) },
-                shape = RoundedCornerShape(18.dp),
+                shape = com.maxrave.simpmusic.ui.tv.TvShapes.Control,
             )
         } else
         // Search Bar with Animated Placeholder

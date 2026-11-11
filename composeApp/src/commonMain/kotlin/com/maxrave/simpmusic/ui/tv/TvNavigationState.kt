@@ -22,10 +22,30 @@ class TvNavigationState {
     private var activeDestination: String? = null
     private val contentReady = mutableMapOf<String, Boolean>()
     fun prepare(destination: String, ready: Boolean) { contentReady[destination] = ready }
-    fun contentReady(destination: String, ready: Boolean) { contentReady[destination] = ready }
+    fun contentReady(destination: String, ready: Boolean) {
+        contentReady[destination] = ready
+        if (ready) enterIfFresh(destination)
+    }
     private val saved = mutableMapOf<String, String>()
     private val targets = mutableMapOf<String, MutableMap<String, FocusRequester>>()
     private var pending: String? = null
+    private val entries = mutableMapOf<String, FocusRequester>()
+    private val entered = mutableSetOf<String>()
+    fun registerEntry(destination: String, requester: FocusRequester) { entries[destination] = requester }
+    fun unregisterEntry(destination: String, requester: FocusRequester) {
+        if (entries[destination] === requester) entries.remove(destination)
+    }
+
+    /**
+     * First visit only: puts focus on the destination's entry point once its content is ready.
+     * Never runs while the rail holds focus (the user chose the rail) or when there is a remembered
+     * element to restore, so it cannot compete with [restoreReady].
+     */
+    fun enterIfFresh(destination: String): Boolean {
+        if (!shouldEnterFresh(destination in entered, activeDestination == destination, railHasFocus, destination in saved, contentReady[destination] == true)) return false
+        val requester = entries[destination] ?: return false
+        return requester.requestFocus().also { if (it) entered += destination }
+    }
     fun hasSavedFocus(destination: String?): Boolean = destination != null && saved.containsKey(destination)
     fun focused(destination: String, key: String) { saved[destination] = key }
     fun resume(destination: String) { activeDestination = destination; pending = destination }
@@ -79,9 +99,10 @@ fun TvDestination(id: String, root: Boolean = false, waitForContent: Boolean = f
     }
     val keyboardVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(LocalDensity.current) > 0
     // Registered after NavHost, before child content: dialogs and IME retain BACK priority.
-    com.maxrave.simpmusic.expect.ui.PlatformBackHandler(enabled = root && !keyboardVisible) {
-        if (navigation?.railHasFocus == true) navigation.restoreContent()
-        else navigation?.railFocus?.requestFocus()
+    // BACK from a tab's content opens the rail. With the rail already focused the handler is off,
+    // so BACK follows the back stack: another tab returns to Home, Home leaves the app.
+    com.maxrave.simpmusic.expect.ui.PlatformBackHandler(enabled = root && !keyboardVisible && navigation?.railHasFocus != true) {
+        navigation?.railFocus?.requestFocus()
     }
     CompositionLocalProvider(LocalTvDestination provides id) {
         Box(Modifier.focusGroup().onGloballyPositioned {
@@ -104,6 +125,27 @@ fun Modifier.tvRememberFocus(): Modifier = composed {
         .onFocusChanged { if (it.isFocused) navigation.focused(destination, key) }
         .onGloballyPositioned { navigation.attach(destination, key, requester) }
 }
+
+/** Marks the element (or group) that takes focus the first time its destination is shown. */
+fun Modifier.tvDestinationEntry(): Modifier = composed {
+    val navigation = LocalTvNavigation.current
+    val destination = LocalTvDestination.current
+    if (!LocalTvDevice.current || navigation == null || destination == null) return@composed this
+    val requester = remember { FocusRequester() }
+    DisposableEffect(navigation, destination) {
+        navigation.registerEntry(destination, requester)
+        onDispose { navigation.unregisterEntry(destination, requester) }
+    }
+    this.focusRequester(requester).onGloballyPositioned { navigation.enterIfFresh(destination) }
+}
+
+internal fun shouldEnterFresh(
+    alreadyEntered: Boolean,
+    active: Boolean,
+    railHasFocus: Boolean,
+    hasSavedFocus: Boolean,
+    contentReady: Boolean,
+): Boolean = !alreadyEntered && active && !railHasFocus && !hasSavedFocus && contentReady
 
 /** A removed target falls back to the first ready control in its own destination. */
 internal fun resolveTvFocusKey(saved: String?, ready: Set<String>): String? =

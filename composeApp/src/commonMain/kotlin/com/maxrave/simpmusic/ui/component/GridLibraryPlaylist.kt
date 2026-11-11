@@ -8,6 +8,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.focusGroup
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -163,7 +164,7 @@ internal inline fun <reified T> GridLibraryPlaylist(
             if ((data is LocalResource.Success && list.isNotEmpty()) || createNewPlaylist != null || header != null) {
                 LazyVerticalGrid(
                     columns = LibraryGridCells,
-                    modifier = Modifier.tvFocusRestorer().then(if (LocalTvDevice.current) Modifier.focusGroup() else Modifier),
+                    modifier = Modifier.tvDestinationEntry().tvFocusRestorer().then(if (LocalTvDevice.current) Modifier.focusGroup() else Modifier),
                     contentPadding = contentPadding,
                     state = state,
                 ) {

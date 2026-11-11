@@ -357,7 +357,7 @@ private class TvFocusDrawNode(
             when (val resolved = resolveOutline(bounds.size)) {
                 is Outline.Rounded -> resolved.roundRect.topLeftCornerRadius.x
                 is Outline.Rectangle -> 0f
-                is Outline.Generic -> TV_CARD_CORNER.toPx()
+                is Outline.Generic -> ((shape ?: TvShapes.Card) as? TvSquircleShape)?.radius?.toPx() ?: TV_CARD_CORNER.toPx()
             }
         val stroke =
             haloStroke?.takeIf { outlineDensity == density }
@@ -418,7 +418,7 @@ private class TvGlowAnchorNode :
 private const val CARD_GLOW_ALPHA = 0.16f
 private const val HALO_RINGS = 12
 private val CARD_GLOW_DROP = 4.dp
-private val TV_CARD_CORNER = 12.dp
+private val TV_CARD_CORNER = 16.dp
 private val TV_BACKING_MAX_CORNER = 16.dp
 
 /**

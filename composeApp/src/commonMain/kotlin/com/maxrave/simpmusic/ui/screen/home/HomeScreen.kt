@@ -60,6 +60,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.maxrave.simpmusic.ui.component.TvPullToRefreshBox as PullToRefreshBox
+import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -848,6 +849,7 @@ fun HomeScreen(
                             if (tvDevice) PaddingValues(top = 8.dp, bottom = TvDimens.SafeVertical) else PaddingValues(0.dp),
                         modifier =
                             Modifier
+                                .tvDestinationEntry()
                                 .then(
                                     if (tvDevice) {
                                         Modifier

@@ -157,13 +157,8 @@ fun TvNavigationRail(
     val navigation = LocalTvNavigation.current
 
 
-    if (hasFocus) {
-        // Composed only while the rail has focus, so it registers after — and therefore ahead of —
-        // the navigation graph's own back handling.
-        PlatformBackHandler(enabled = true) {
-            if (navigation?.restoreContent() != true) contentRequester?.requestFocus()
-        }
-    }
+    // BACK with the rail focused is not intercepted: it follows the back stack (another tab
+    // returns to Home, Home leaves the app). RIGHT returns to the content.
 
     Box(
         modifier
