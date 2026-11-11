@@ -67,7 +67,11 @@ down the rail. On a TV, `App.kt` therefore routes them to existing pieces instea
   the nav graph does not reopen the Now Playing sheet afterwards on TV.
 - The floating mini player is hidden. `TvNowPlayingChip` sits in Home's top bar between the
   profile and the chips, Spotify TV style: artwork, then "Now Playing" over the track name. OK
-  opens the player, holding OK plays or pauses. Other tabs have no mini player yet (P1B).
+  opens the player, holding OK plays or pauses. Library shows the same chip after the profile and
+  Search shows it above the field. On Home, UP from the first content row goes straight to the
+  chip (or to the profile when nothing is loaded), not to the nearest top-bar item.
+- Pull-to-refresh is disabled on TV: a remote has no pull gesture, and UP at the top of Home used
+  to show the indicator. Selecting Home again in the rail still refreshes it.
 
 Not adapted in this PR: Library, playlists, album and artist pages beyond the shared list and
 card components they reuse, Listen Together, Wrapped, and settings sub-screens other than the
