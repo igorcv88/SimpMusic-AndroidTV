@@ -24,46 +24,60 @@ fun NavGraphBuilder.homeScreenGraph(
     innerPadding: PaddingValues,
     navController: NavController,
 ) {
-    composable<CreditDestination> {
-        CreditScreen(
-            paddingValues = innerPadding,
-            navController = navController,
-        )
+    composable<CreditDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            CreditScreen(
+                paddingValues = innerPadding,
+                navController = navController,
+            )
+        }
     }
-    composable<AppLogDestination> {
-        AppLogScreen(
-            paddingValues = innerPadding,
-            navController = navController,
-        )
+    composable<AppLogDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            AppLogScreen(
+                paddingValues = innerPadding,
+                navController = navController,
+            )
+        }
     }
     composable<MoodDestination> { entry ->
-        val params = entry.toRoute<MoodDestination>().params
-        MoodScreen(
-            navController = navController,
-            params = params,
-        )
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val params = entry.toRoute<MoodDestination>().params
+            MoodScreen(
+                navController = navController,
+                params = params,
+            )
+        }
     }
-    composable<ListenTogetherDestination> {
-        ListenTogetherScreen(
-            navController = navController,
-            innerPadding = innerPadding,
-        )
+    composable<ListenTogetherDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            ListenTogetherScreen(
+                navController = navController,
+                innerPadding = innerPadding,
+            )
+        }
     }
-    composable<ListenTogetherSettingsDestination> {
-        ListenTogetherSettingsScreen(
-            navController = navController,
-            innerPadding = innerPadding,
-        )
+    composable<ListenTogetherSettingsDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            ListenTogetherSettingsScreen(
+                navController = navController,
+                innerPadding = innerPadding,
+            )
+        }
     }
-    composable<NotificationDestination> {
-        NotificationScreen(
-            navController = navController,
-        )
+    composable<NotificationDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            NotificationScreen(
+                navController = navController,
+            )
+        }
     }
-    composable<SettingsDestination> {
-        SettingScreen(
-            navController = navController,
-            innerPadding = innerPadding,
-        )
+    composable<SettingsDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            SettingScreen(
+                navController = navController,
+                innerPadding = innerPadding,
+            )
+        }
     }
 }

@@ -17,6 +17,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvPalette
 import com.maxrave.domain.manager.DataStoreManager
 import com.maxrave.simpmusic.expect.ui.SystemBarAppearanceEffect
 import com.maxrave.simpmusic.expect.ui.platformDynamicColorScheme
@@ -141,7 +143,7 @@ fun AppTheme(
         }
     // Light pins the neutrals to a neutral-grey ramp (the seed otherwise tints them warm/cream);
     // dark keeps the generated neutrals as they are.
-    val colorScheme =
+    val baseColorScheme =
         wallpaperScheme
             ?: rememberDynamicColorScheme(
                 seedColor = seedColor,
@@ -149,6 +151,14 @@ fun AppTheme(
                 style = PaletteStyle.TonalSpot,
                 modifyColorScheme = { cs -> if (isDark) cs else cs.withNeutralLightSurfaces() },
             )
+    // TV: every page stands on the TV palette's background, so the rail's strip and the screen
+    // beside it are one surface. Everything else in the scheme is the dark scheme as generated.
+    val colorScheme =
+        if (LocalTvDevice.current) {
+            baseColorScheme.copy(background = TvPalette.Background, surface = TvPalette.Background)
+        } else {
+            baseColorScheme
+        }
     // Immersive screens stay dark even at light theme (see [ForceDarkContent]). Resolve their scheme
     // once here instead of letting every such subtree build a palette of its own.
     val forcedDarkScheme =

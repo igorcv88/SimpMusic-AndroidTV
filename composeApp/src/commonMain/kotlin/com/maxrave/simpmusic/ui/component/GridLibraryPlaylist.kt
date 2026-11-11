@@ -5,6 +5,11 @@ import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.focusGroup
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,7 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.maxrave.simpmusic.ui.component.TvPullToRefreshBox as PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -159,6 +164,7 @@ internal inline fun <reified T> GridLibraryPlaylist(
             if ((data is LocalResource.Success && list.isNotEmpty()) || createNewPlaylist != null || header != null) {
                 LazyVerticalGrid(
                     columns = LibraryGridCells,
+                    modifier = Modifier.tvDestinationEntry().tvFocusRestorer().then(if (LocalTvDevice.current) Modifier.focusGroup() else Modifier),
                     contentPadding = contentPadding,
                     state = state,
                 ) {
@@ -218,13 +224,24 @@ internal inline fun <reified T> GridLibraryPlaylist(
                                                 .basicMarquee(
                                                     iterations = Int.MAX_VALUE,
                                                     animationMode = MarqueeAnimationMode.Immediately,
-                                                ).focusable(),
+                                                ).focusable(!LocalTvDevice.current),
                                     )
                                 }
                             }
                         }
                     }
-                    items(list) { item ->
+                    items(list, key = { item ->
+                        when (item) {
+                            is ChartItem -> "chart/${item.ytPlaylistId}"
+                            is LocalPlaylistEntity -> "local/${item.id}"
+                            is PlaylistsResult -> "youtube/${item.browseId}"
+                            is AlbumEntity -> "album/${item.browseId}"
+                            is PlaylistEntity -> "playlist/${item.id}"
+                            is PodcastsEntity -> "podcast/${item.podcastId}"
+                            is MonthlyRecapItem -> "recap/${item.year}/${item.month}"
+                            else -> item.hashCode().toString()
+                        }
+                    }) { item ->
                         if (item !is PlaylistType) {
                             return@items
                         }

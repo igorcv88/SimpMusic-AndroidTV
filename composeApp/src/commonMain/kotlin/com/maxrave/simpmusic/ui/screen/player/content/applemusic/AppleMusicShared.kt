@@ -419,7 +419,8 @@ internal fun AppleMusicCompactHeader(
         modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onBack != null) {
+        // A remote has its own BACK key; an on-screen arrow is a phone idiom.
+        if (onBack != null && !com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) {
             // On the circle the page's floating buttons sit on.
             AppleMusicFloatingCircleButton(icon = SimpIcons.ArrowBackIosNew, onClick = onBack)
             Spacer(modifier = Modifier.width(12.dp))

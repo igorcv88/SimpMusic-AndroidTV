@@ -1,5 +1,9 @@
 package com.maxrave.simpmusic.ui.screen.library
 
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import com.maxrave.simpmusic.ui.tv.rememberTvDetailFocus
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -205,7 +209,10 @@ fun LibraryDynamicPlaylistScreen(
                 ?: emptyList()
     }
 
+    val tvListState = rememberLazyListState()
+    val tvDetailFocus = rememberTvDetailFocus(tvListState, firstSongIndex = 2)
     LazyColumn(
+        state = tvListState,
         modifier = Modifier.hazeSource(hazeState),
         contentPadding = innerPadding,
     ) {
@@ -219,14 +226,14 @@ fun LibraryDynamicPlaylistScreen(
         }
         val type = LibraryDynamicPlaylistType.toType(type)
         if (type == LibraryDynamicPlaylistType.Followed) {
-            items(
+            itemsIndexed(
                 if (query.isNotEmpty() && showSearchBar) {
                     tempFollowed
                 } else {
                     followed
                 },
-                key = { it.channelId },
-            ) { artist ->
+                key = { _, it -> it.channelId },
+            ) { index, artist ->
                 ArtistFullWidthItems(
                     artist,
                     onClickListener = {
@@ -242,14 +249,14 @@ fun LibraryDynamicPlaylistScreen(
             when (analyticsUIState.topArtists) {
                 is LocalResource.Success if (!analyticsUIState.topArtists.data.isNullOrEmpty()) -> {
                     val data = analyticsUIState.topArtists.data ?: emptyList()
-                    items(
+                    itemsIndexed(
                         if (query.isNotEmpty() && showSearchBar) {
                             tempTopArtists
                         } else {
                             data
                         },
-                        key = { it.first.hashCode() },
-                    ) { artist ->
+                        key = { _, it -> it.first.hashCode() },
+                    ) { index, artist ->
                         ArtistFullWidthItems(
                             artist.second,
                             rightView = {
@@ -277,14 +284,14 @@ fun LibraryDynamicPlaylistScreen(
             when (analyticsUIState.topAlbums) {
                 is LocalResource.Success if (!analyticsUIState.topAlbums.data.isNullOrEmpty()) -> {
                     val data = analyticsUIState.topAlbums.data ?: emptyList()
-                    items(
+                    itemsIndexed(
                         if (query.isNotEmpty() && showSearchBar) {
                             tempTopAlbums
                         } else {
                             data
                         },
-                        key = { it.first.hashCode() },
-                    ) { album ->
+                        key = { _, it -> it.first.hashCode() },
+                    ) { index, album ->
                         PlaylistFullWidthItems(
                             album.second,
                             rightView = {
@@ -312,18 +319,18 @@ fun LibraryDynamicPlaylistScreen(
             when (analyticsUIState.topTracks) {
                 is LocalResource.Success if (!analyticsUIState.topTracks.data.isNullOrEmpty()) -> {
                     val data = analyticsUIState.topTracks.data ?: emptyList()
-                    items(
+                    itemsIndexed(
                         if (query.isNotEmpty() && showSearchBar) {
                             tempTopTracks
                         } else {
                             data
                         },
-                        key = { it.hashCode() },
-                    ) { song ->
+                        key = { _, it -> it.second.videoId },
+                    ) { index, song ->
                         SongFullWidthItems(
                             songEntity = song.second,
                             isPlaying = song.second.videoId == nowPlayingVideoId,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().then(tvDetailFocus.songModifier(index == 0)),
                             onMoreClickListener = {
                                 chosenSong = song.second
                                 showBottomSheet = true
@@ -380,7 +387,7 @@ fun LibraryDynamicPlaylistScreen(
                 else -> {}
             }
         } else {
-            items(
+            itemsIndexed(
                 when (type) {
                     LibraryDynamicPlaylistType.Downloaded -> {
                         if (query.isNotEmpty() && showSearchBar) {
@@ -434,12 +441,12 @@ fun LibraryDynamicPlaylistScreen(
                         }
                     }
                 },
-                key = { it.hashCode() },
-            ) { song ->
+                key = { _, it -> it.videoId },
+            ) { index, song ->
                 SongFullWidthItems(
                     songEntity = song,
                     isPlaying = song.videoId == nowPlayingVideoId,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().then(tvDetailFocus.songModifier(index == 0)),
                     onMoreClickListener = {
                         chosenSong = song
                         showBottomSheet = true
@@ -598,14 +605,16 @@ fun LibraryDynamicPlaylistScreen(
                 },
                 navigationIcon = {
                     Box(Modifier.padding(horizontal = 5.dp)) {
-                        RippleIconButton(
-                            SimpIcons.ArrowBackIosNew,
-                            Modifier
-                                .size(32.dp),
-                            true,
-                            tint = MaterialTheme.colorScheme.onBackground,
-                        ) {
-                            navController.navigateUp()
+                        if (!LocalTvDevice.current) {
+                            RippleIconButton(
+                                SimpIcons.ArrowBackIosNew,
+                                Modifier
+                                    .size(32.dp),
+                                true,
+                                tint = MaterialTheme.colorScheme.onBackground,
+                            ) {
+                                navController.navigateUp()
+                            }
                         }
                     }
                 },
@@ -614,6 +623,7 @@ fun LibraryDynamicPlaylistScreen(
                         RippleIconButton(
                             SimpIcons.PlayCircle,
                             Modifier
+                                .then(tvDetailFocus.playModifier(tvListState.layoutInfo.totalItemsCount > 2))
                                 .size(48.dp),
                             fillMaxSize = true,
                             tint = MaterialTheme.colorScheme.onBackground,

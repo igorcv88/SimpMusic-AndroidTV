@@ -48,6 +48,23 @@ def profile(header, *rows):
 
 
 class FrameStatsTest(unittest.TestCase):
+    def test_missing_or_stale_key_timestamp_cannot_report_unrelated_frame(self):
+        header = HEADERS["android-8"]
+        stats = ("Uptime: 2000 Realtime: 2000\nTotal frames rendered: 1\nJanky frames: 0\n"
+                 + profile(header, frame(header)))
+        for log in ("", "injectKeyEvent action=ACTION_DOWN KEYCODE_DPAD_RIGHT eventTime=900"):
+            with self.subTest(log=log):
+                answers = {
+                    "dumpsys gfxinfo com.maxrave.simpmusic.dev reset": "Uptime: 1000 Realtime: 1000\n",
+                    "input keyevent 22": "",
+                    "dumpsys gfxinfo com.maxrave.simpmusic.dev framestats": stats,
+                    "logcat -d -b main -t 2000 | grep injectKeyEvent": log,
+                }
+                tv = mock.Mock()
+                tv.shell.side_effect = answers.__getitem__
+                with mock.patch.object(bench.time, "sleep"):
+                    self.assertIsNone(bench.measure_key(tv, 22))
+
     def test_aosp_formats_read_the_named_timestamps(self):
         for version, header in HEADERS.items():
             with self.subTest(version=version):

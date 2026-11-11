@@ -7,6 +7,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusDirection
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -134,6 +141,9 @@ fun LibraryScreen(
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
     val density = LocalDensity.current
+    val tvDevice = LocalTvDevice.current
+    val libraryContentFocus = remember { FocusRequester() }
+    val libraryListState = rememberLazyListState()
 
     val loggedIn by viewModel.youtubeLoggedIn.collectAsStateWithLifecycle(initialValue = false)
     // Wrapped and its recaps are built entirely from playback_event, so the chip follows the same
@@ -242,12 +252,12 @@ fun LibraryScreen(
     // the row its sibling (nesting the row inside the source is the RuntimeShader feedback loop).
     val chipBackdrop = rememberBackdrop(MaterialTheme.colorScheme.background)
     Crossfade(
-        modifier = Modifier.then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
+        modifier = Modifier.then(if (tvDevice) Modifier.tvDestinationEntry().focusRequester(libraryContentFocus).tvFocusRestorer().focusGroup() else Modifier).then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
         targetState = currentFilter,
     ) { filter ->
         when (filter) {
             LibraryChipType.YOUR_LIBRARY -> {
-                val state = rememberLazyListState()
+                val state = libraryListState
                 val isScrollingUp by state.isScrollingUp()
                 LaunchedEffect(state) {
                     snapshotFlow { state.firstVisibleItemIndex }
@@ -282,7 +292,7 @@ fun LibraryScreen(
                             ),
                         state = state,
                     ) {
-                        item {
+                        item(key = "collections") {
                             LibraryTilingBox(navController, libraryOverview, cachedPreview)
                         }
 
@@ -521,6 +531,13 @@ fun LibraryScreen(
         Row(
             modifier =
                 Modifier
+                    .then(if (tvDevice) Modifier.focusProperties {
+                        onExit = {
+                            if (requestedFocusDirection == FocusDirection.Down && libraryContentFocus.requestFocus()) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }.focusGroup() else Modifier)
                     .horizontalScroll(chipRowState)
                     .padding(horizontal = 15.dp)
                     .padding(bottom = 8.dp)

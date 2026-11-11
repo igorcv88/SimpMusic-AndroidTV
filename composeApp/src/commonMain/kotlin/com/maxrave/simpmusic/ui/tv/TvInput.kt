@@ -2,33 +2,24 @@
 
 package com.maxrave.simpmusic.ui.tv
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Indication
 import androidx.compose.foundation.clickable as foundationClickable
 import androidx.compose.foundation.combinedClickable as foundationCombinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -40,41 +31,12 @@ val LocalTvDevice = staticCompositionLocalOf { false }
 expect fun rememberTvDevice(): Boolean
 
 /**
- * The TV focus mark: the focused element grows a little and gets a soft light backing in its own
- * shape, the way TV launchers mark focus, instead of an outline. Nothing changes layout.
- *
- * The backing follows the element's likely outline (a circle on square elements, a capsule on
- * pills, a 16dp corner otherwise) because most call sites sit behind a `clip(...)` that would cut
- * the corners off a rectangle. A caller that knows the shape passes it.
+ * The P1 focus mark, kept for the call sites that have not been migrated to a named style: it is
+ * [tvFocus] in [TvFocusStyle.Backing] (scale 1.06 and a soft backing in the element's own shape, no
+ * outline, layout unchanged). When a [tvFocus] of another style wraps the same focus target, that
+ * one shows and this one stays at rest, so the two scales never multiply.
  */
-fun Modifier.tvFocusIndicator(shape: Shape? = null): Modifier = composed {
-    if (!LocalTvDevice.current) return@composed this
-    var focused by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(if (focused) TV_FOCUS_SCALE else 1f, label = "tvFocusScale")
-    val backing by animateFloatAsState(if (focused) TV_FOCUS_BACKING_ALPHA else 0f, label = "tvFocusBacking")
-    onFocusChanged { focused = it.isFocused }
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }.drawWithContent {
-            if (backing > 0f) {
-                val outline = (shape ?: defaultFocusShape(size)).createOutline(size, layoutDirection, this)
-                drawOutline(outline, Color.White.copy(alpha = backing))
-            }
-            drawContent()
-        }
-}
-
-private const val TV_FOCUS_SCALE = 1.06f
-private const val TV_FOCUS_BACKING_ALPHA = 0.16f
-private val TV_FOCUS_MAX_CORNER = 16.dp
-
-private fun androidx.compose.ui.unit.Density.defaultFocusShape(size: Size): Shape {
-    val shortSide = minOf(size.width, size.height)
-    val isSquare = shortSide > 0f && kotlin.math.abs(size.width - size.height) / shortSide < 0.1f
-    if (isSquare) return CircleShape
-    return RoundedCornerShape(minOf(shortSide / 2f, TV_FOCUS_MAX_CORNER.toPx()))
-}
+fun Modifier.tvFocusIndicator(shape: Shape? = null): Modifier = tvFocus(TvFocusStyle.Backing, shape)
 
 // Same gesture/semantics implementations as Foundation, with a TV-only focus mark.
 fun Modifier.tvClickable(enabled: Boolean = true, onClickLabel: String? = null,
@@ -194,7 +156,7 @@ fun Modifier.tvSliderKeys(value: Float, range: ClosedFloatingPointRange<Float>, 
 }
 
 /** Explicit OK reopens the TV IME after Back; arrows can leave an input without a touch. */
-fun Modifier.tvTextInput(): Modifier = composed {
+fun Modifier.tvTextInput(onActivate: () -> Unit = {}): Modifier = composed {
     if (!LocalTvDevice.current) return@composed this
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -202,8 +164,11 @@ fun Modifier.tvTextInput(): Modifier = composed {
     tvFocusIndicator().onFocusChanged { ownsFocus = it.isFocused }.onPreviewKeyEvent { event ->
         if (!ownsFocus) return@onPreviewKeyEvent false
         when (event.key) {
-            Key.DirectionCenter -> {
-                if (event.type == KeyEventType.KeyUp) keyboard?.show()
+            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                if (event.type == KeyEventType.KeyUp) {
+                    onActivate()
+                    keyboard?.show()
+                }
                 true
             }
             Key.DirectionDown, Key.DirectionUp -> {
@@ -226,9 +191,11 @@ fun Modifier.tvFocusRestorer(): Modifier = composed {
 fun Modifier.tvInitialFocus(): Modifier = composed {
     if (!LocalTvDevice.current) return@composed this
     val requester = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        requester.requestFocus()
+    val navigation = LocalTvNavigation.current
+    val destination = LocalTvDestination.current
+    var placed by remember { mutableStateOf(false) }
+    LaunchedEffect(placed, navigation, destination) {
+        if (placed && navigation?.hasSavedFocus(destination) != true) requester.requestFocus()
     }
-    this.then(Modifier.focusRequester(requester))
+    this.focusRequester(requester).onGloballyPositioned { placed = true }
 }

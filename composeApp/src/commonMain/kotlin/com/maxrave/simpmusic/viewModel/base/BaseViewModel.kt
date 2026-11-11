@@ -128,6 +128,7 @@ abstract class BaseViewModel :
         type: String,
         index: Int? = null,
     ) {
+        com.maxrave.simpmusic.ui.tv.TvPlaybackRequests.userStartedPlayback()
         viewModelScope.launch {
             mediaPlayerHandler.loadMediaItem(
                 anyTrack = anyTrack,
@@ -138,6 +139,7 @@ abstract class BaseViewModel :
     }
 
     fun shufflePlaylist(firstPlayIndex: Int = 0) {
+        com.maxrave.simpmusic.ui.tv.TvPlaybackRequests.userStartedPlayback()
         mediaPlayerHandler.shufflePlaylist(firstPlayIndex)
     }
 

@@ -11,6 +11,22 @@ import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.runtime.key
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.LocalTvDestination
+import com.maxrave.simpmusic.ui.tv.LocalTvNavigation
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.component.tvHeaderItem
+import androidx.compose.material3.TextButton
+import org.jetbrains.compose.resources.stringResource
+import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.retry
+import simpmusic.composeapp.generated.resources.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -116,8 +132,17 @@ fun BrowseScreen(
     viewModel: BrowseViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    com.maxrave.simpmusic.ui.tv.TvContentReady(uiState !is BrowseUIState.Loading)
     val hazeState = rememberHazeState()
     val listState = rememberLazyListState()
+    val tvDevice = LocalTvDevice.current
+    val navigation = LocalTvNavigation.current
+    val destination = LocalTvDestination.current
+    val contentFocus = remember { FocusRequester() }
+    var contentReady by remember { mutableStateOf(false) }
+    LaunchedEffect(contentReady) {
+        if (tvDevice && contentReady && navigation?.hasSavedFocus(destination) != true) contentFocus.requestFocus()
+    }
     // Mix for you's bar rule: transparent only while pixel 0 is on screen.
     val isAtTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0 }
@@ -218,15 +243,15 @@ fun BrowseScreen(
                                 }
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.fillMaxSize().then(if (tvDevice) Modifier.focusRequester(contentFocus).tvFocusRestorer().focusGroup() else Modifier),
                                 // Padding rather than a spacer item, so the first item is a real row and
                                 // the glow hands off once a row has scrolled by, as on Mix for you.
                                 contentPadding = PaddingValues(top = innerPadding.calculateTopPadding() + 64.dp),
                                 verticalArrangement = Arrangement.spacedBy(RowGap),
                             ) {
-                                items(moodRows) { row ->
+                                items(moodRows, key = { row -> "moods/" + row.joinToString { it.params } }) { row ->
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
+                                        modifier = Modifier.fillMaxWidth().onGloballyPositioned { contentReady = true },
                                         horizontalArrangement = Arrangement.spacedBy(RowGap),
                                     ) {
                                         row.forEach { mood ->
@@ -245,9 +270,10 @@ fun BrowseScreen(
                                         }
                                     }
                                 }
-                                items(cardRows) { row ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(RowGap)) {
+                                items(cardRows, key = { row -> "cards/" + row.joinToString { it.content.tvHeaderItem().id } }) { row ->
+                                    Row(modifier = Modifier.onGloballyPositioned { contentReady = true }, horizontalArrangement = Arrangement.spacedBy(RowGap)) {
                                         row.forEach { card ->
+                                            key(card.content.tvHeaderItem().id) {
                                             Box(Modifier.width(card.width)) {
                                                 HomeContentCard(
                                                     temp = card.content,
@@ -260,7 +286,16 @@ fun BrowseScreen(
                                                     fillMaxWidth = true,
                                                 )
                                             }
+                                            }
                                         }
+                                    }
+                                }
+                                if (tvDevice && cardRows.isEmpty() && moodRows.isEmpty()) {
+                                    item {
+                                        TextButton(
+                                            modifier = Modifier.tvFocusIndicator().onGloballyPositioned { contentReady = true },
+                                            onClick = { navController.navigateUp() },
+                                        ) { Text(stringResource(Res.string.home)) }
                                     }
                                 }
                                 item {
@@ -271,8 +306,15 @@ fun BrowseScreen(
                     }
 
                     is BrowseUIState.Error -> {
-                        LaunchedEffect(state) {
-                            viewModel.makeToast(state.message)
+                        LaunchedEffect(state) { viewModel.makeToast(state.message) }
+                        if (tvDevice) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                TextButton(
+                                    modifier = Modifier.focusRequester(contentFocus).tvFocusIndicator()
+                                        .onGloballyPositioned { contentReady = true },
+                                    onClick = { viewModel.getBrowsePage(browseId, params) },
+                                ) { Text(stringResource(Res.string.retry)) }
+                            }
                         }
                     }
 
@@ -318,11 +360,11 @@ fun BrowseScreen(
                                     ).basicMarquee(
                                         iterations = Int.MAX_VALUE,
                                         animationMode = MarqueeAnimationMode.Immediately,
-                                    ).focusable(),
+                                    ).focusable(!tvDevice),
                         )
                     },
                     navigationIcon = {
-                        Box(Modifier.padding(horizontal = 5.dp)) {
+                        if (!tvDevice) Box(Modifier.padding(horizontal = 5.dp)) {
                             RippleIconButton(
                                 SimpIcons.ArrowBackIosNew,
                                 Modifier

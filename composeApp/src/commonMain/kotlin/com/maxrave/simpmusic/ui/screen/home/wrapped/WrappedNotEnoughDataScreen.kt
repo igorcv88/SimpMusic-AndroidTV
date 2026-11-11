@@ -77,12 +77,14 @@ fun WrappedNotEnoughDataScreen(
             // behind the button to refract, and glass over a flat colour is a border pretending to
             // be a surface. The reel's own close button floats over artwork, which is the case
             // glass exists for.
-            RippleIconButton(
-                imageVector = SimpIcons.ArrowBackIosNew,
-                tint = MaterialTheme.colorScheme.onSurface,
-                onClick = onBack,
-            )
-            Spacer(modifier = Modifier.width(14.dp))
+            if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) {
+                RippleIconButton(
+                    imageVector = SimpIcons.ArrowBackIosNew,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    onClick = onBack,
+                )
+                Spacer(modifier = Modifier.width(14.dp))
+            }
             Text(
                 text = stringResource(Res.string.wrapped),
                 style = MaterialTheme.typography.titleMedium,

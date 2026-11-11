@@ -54,6 +54,10 @@ fun Chip(
     compact: Boolean = false,
     onClick: () -> Unit,
 ) {
+    if (com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) {
+        com.maxrave.simpmusic.ui.tv.TvChip(selected = isSelected, onClick = onClick, label = text)
+        return
+    }
     val glassOn = LocalLiquidGlassEnabled.current
     val glassBackdrop = backdrop?.takeIf { glassOn && !isSelected }
     ChipFrame(isAnimated = isAnimated && isSelected) {
@@ -91,6 +95,19 @@ fun ExpandableChip(
     isAnimated: Boolean = false,
     backdrop: PlatformBackdrop? = null,
 ) {
+    if (com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) {
+        Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            com.maxrave.simpmusic.ui.tv.TvChip(
+                selected = selectedIndex != null,
+                onClick = { onExpandedChange(!expanded) },
+                label = if (!expanded && selectedIndex != null) "$text | ${options.getOrNull(selectedIndex).orEmpty()}" else text,
+            )
+            if (expanded) options.forEachIndexed { index, option ->
+                com.maxrave.simpmusic.ui.tv.TvChip(selected = index == selectedIndex, onClick = { onSelect(index) }, label = option)
+            }
+        }
+        return
+    }
     val picked = selectedIndex?.let(options::getOrNull)
     // The folded label is still on screen while it shrinks away after the pick is cleared (All), so it
     // shows the last pick rather than nothing.

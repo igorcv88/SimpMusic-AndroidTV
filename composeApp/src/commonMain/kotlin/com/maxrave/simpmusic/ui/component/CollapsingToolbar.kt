@@ -200,7 +200,7 @@ fun CollapsingToolbarParallaxEffect(
                             12.dp,
                         ),
             ) {
-                IconButton(
+                if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { IconButton(
                     onClick = onBack,
                     colors =
                         IconButtonDefaults.iconButtonColors().copy(
@@ -215,7 +215,7 @@ fun CollapsingToolbarParallaxEffect(
                         ),
                 ) {
                     Icon(SimpIcons.ArrowBackIosNew, "Back")
-                }
+                } }
             }
         }
     }
@@ -351,7 +351,7 @@ private fun Toolbar(
                     ),
                 ),
             navigationIcon = {
-                IconButton(
+                if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { IconButton(
                     onClick = {
                         onBack.invoke()
                     },
@@ -365,7 +365,7 @@ private fun Toolbar(
                         contentDescription = null,
                         tint = Color.White,
                     )
-                }
+                } }
             },
             title = {},
             colors =

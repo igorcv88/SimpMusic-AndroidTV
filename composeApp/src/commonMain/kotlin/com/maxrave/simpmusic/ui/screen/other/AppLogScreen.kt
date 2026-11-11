@@ -235,14 +235,14 @@ fun AppLogScreen(
                 },
                 navigationIcon = {
                     Box(Modifier.padding(horizontal = 5.dp)) {
-                        RippleIconButton(
+                        if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                             SimpIcons.ArrowBackIosNew,
                             Modifier.size(32.dp),
                             true,
                             tint = onSurface,
                         ) {
                             navController.navigateUp()
-                        }
+                        } }
                     }
                 },
                 actions = {

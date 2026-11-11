@@ -21,36 +21,9 @@ fun NavGraphBuilder.loginScreenGraph(
     hideBottomBar: () -> Unit,
     showBottomBar: () -> Unit,
 ) {
-    composable<LoginDestination> {
-        LoginScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            hideBottomNavigation = hideBottomBar,
-            showBottomNavigation = showBottomBar,
-        )
-    }
-
-    composable<SpotifyLoginDestination> {
-        SpotifyLoginScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            hideBottomNavigation = hideBottomBar,
-            showBottomNavigation = showBottomBar,
-        )
-    }
-
-    composable<DiscordLoginDestination> {
-        // A Full build carries a Discord application and logs in through Discord's own page; a FOSS
-        // build keeps the WebView login whose token kizzy uses.
-        if (isDiscordOAuthAvailable()) {
-            DiscordOAuthLoginScreen(
-                innerPadding = innerPadding,
-                navController = navController,
-                hideBottomNavigation = hideBottomBar,
-                showBottomNavigation = showBottomBar,
-            )
-        } else {
-            DiscordLoginScreen(
+    composable<LoginDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            LoginScreen(
                 innerPadding = innerPadding,
                 navController = navController,
                 hideBottomNavigation = hideBottomBar,
@@ -59,12 +32,47 @@ fun NavGraphBuilder.loginScreenGraph(
         }
     }
 
-    composable<LastfmLoginDestination> {
-        LastfmLoginScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            hideBottomNavigation = hideBottomBar,
-            showBottomNavigation = showBottomBar,
-        )
+    composable<SpotifyLoginDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            SpotifyLoginScreen(
+                innerPadding = innerPadding,
+                navController = navController,
+                hideBottomNavigation = hideBottomBar,
+                showBottomNavigation = showBottomBar,
+            )
+        }
+    }
+
+    composable<DiscordLoginDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            // A Full build carries a Discord application and logs in through Discord's own page; a FOSS
+            // build keeps the WebView login whose token kizzy uses.
+            if (isDiscordOAuthAvailable()) {
+                DiscordOAuthLoginScreen(
+                    innerPadding = innerPadding,
+                    navController = navController,
+                    hideBottomNavigation = hideBottomBar,
+                    showBottomNavigation = showBottomBar,
+                )
+            } else {
+                DiscordLoginScreen(
+                    innerPadding = innerPadding,
+                    navController = navController,
+                    hideBottomNavigation = hideBottomBar,
+                    showBottomNavigation = showBottomBar,
+                )
+            }
+        }
+    }
+
+    composable<LastfmLoginDestination> { tvEntry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+            LastfmLoginScreen(
+                innerPadding = innerPadding,
+                navController = navController,
+                hideBottomNavigation = hideBottomBar,
+                showBottomNavigation = showBottomBar,
+            )
+        }
     }
 }
