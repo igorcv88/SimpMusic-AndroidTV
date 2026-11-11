@@ -83,8 +83,29 @@ android {
         }
     }
 
+    // Optional: -PtvSigning=<properties file> with storeFile, storePassword, keyAlias and keyPassword
+    // signs debug and release with that key (tools/tv_install.py, .github/workflows/tv-apk.yml), so
+    // every build installed on the TV carries the same certificate. Without it nothing changes.
+    val tvSigningFile = providers.gradleProperty("tvSigning").orNull?.let { rootProject.file(it) }
+    val tvSigning =
+        tvSigningFile?.let { file ->
+            require(file.isFile) { "-PtvSigning: $file is not a file" }
+            val properties = Properties().apply { file.inputStream().use { load(it) } }
+            fun value(key: String): String =
+                requireNotNull(properties.getProperty(key)?.takeIf { it.isNotEmpty() }) {
+                    "-PtvSigning: $key is missing from $file"
+                }
+            signingConfigs.create("tv") {
+                storeFile = rootProject.file(value("storeFile"))
+                storePassword = value("storePassword")
+                keyAlias = value("keyAlias")
+                keyPassword = value("keyPassword")
+            }
+        }
+
     buildTypes {
         release {
+            tvSigning?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -101,6 +122,7 @@ android {
             }
         }
         debug {
+            tvSigning?.let { signingConfig = it }
             isMinifyEnabled = false
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
