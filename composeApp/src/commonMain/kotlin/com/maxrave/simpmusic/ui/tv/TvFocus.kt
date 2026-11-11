@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
@@ -49,23 +51,23 @@ import kotlin.math.max
 
 /**
  * How a focused element is marked on TV (spec, "Focus"). Focus is shown by scale, light and
- * elevation, never by an outline.
+ * elevation and a fine translucent rim aligned with the content.
  *
- * - [Card]: artwork cards. Scale 1.10 and a 24 dp glow in the artwork's tint.
- * - [Control]: buttons, chips, rail and top-bar items. Scale 1.05; the fill and content colours are
+ * - [Card]: artwork cards. Scale 1.025 and a 24 dp glow in the artwork's tint.
+ * - [Control]: buttons, chips, rail and top-bar items. Scale 1.015; the fill and content colours are
  *   swapped by the control itself (see `TvButtons.kt`), so nothing is drawn here.
- * - [Row]: list rows. Scale 1.02 and a `Surface2` backing in the row's shape.
- * - [Backing]: P1 call sites not yet migrated (`tvFocusIndicator()`). Scale 1.06 and a `Surface2`
+ * - [Row]: list rows. Scale 1.008 and a `Surface2` backing in the row's shape.
+ * - [Backing]: P1 call sites not yet migrated (`tvFocusIndicator()`). Scale 1.015 and a `Surface2`
  *   backing.
  */
 enum class TvFocusStyle { Card, Control, Row, Backing }
 
 fun focusScaleFor(style: TvFocusStyle): Float =
     when (style) {
-        TvFocusStyle.Card -> 1.10f
-        TvFocusStyle.Control -> 1.05f
-        TvFocusStyle.Row -> 1.02f
-        TvFocusStyle.Backing -> 1.06f
+        TvFocusStyle.Card -> 1.025f
+        TvFocusStyle.Control -> 1.015f
+        TvFocusStyle.Row -> 1.008f
+        TvFocusStyle.Backing -> 1.015f
     }
 
 /**
@@ -79,7 +81,7 @@ fun focusScaleFor(style: TvFocusStyle): Float =
  *   exactly as without it. The focused element is raised in z-order so it draws over its neighbours.
  * - **One scale per element.** When one focus mark wraps another on the same focus target — a
  *   `Card` around the `Backing` that `tvClickable` adds, for example — only the outermost one
- *   shows; the inner one stays at rest. That is what keeps a card at 1.10 instead of 1.10 x 1.06.
+ *   shows; the inner one stays at rest. That is what keeps a card at 1.025 instead of multiplying nested scales.
  * - **Interruptible.** The spring starts from the current value and velocity. Holding a D-pad key
  *   (about 20 focus changes a second) retargets one running animation per element.
  * - **Reduced motion.** With the animator scale at 0 the mark is applied in the same frame.
@@ -100,6 +102,7 @@ fun Modifier.tvFocus(
         val motion = LocalTvMotion.current
         val state = remember { TvFocusState() }
         this
+            .tvRememberFocus()
             .then(TvFocusLayerElement(state, style, motion.focusSpring, motion.reduced))
             .then(TvFocusDrawElement(state, style, shape, glow))
     }
@@ -160,7 +163,7 @@ private data class TvFocusLayerElement(
         node.state = state
         node.style = style
         node.spec = spec
-        node.reduced = reduced
+        node.updateReducedMotion(reduced)
     }
 
     override fun InspectorInfo.inspectableProperties() {
@@ -177,7 +180,7 @@ private class TvFocusLayerNode(
     var state: TvFocusState,
     var style: TvFocusStyle,
     var spec: AnimationSpec<Float>,
-    var reduced: Boolean,
+    private var reduced: Boolean,
 ) : Modifier.Node(),
     FocusEventModifierNode,
     LayoutModifierNode,
@@ -186,6 +189,12 @@ private class TvFocusLayerNode(
 
     private var animation: Job? = null
     private var velocity = 0f
+
+    fun updateReducedMotion(value: Boolean) {
+        if (reduced == value) return
+        reduced = value
+        if (value) animateTo(if (state.active) 1f else 0f)
+    }
 
     // Allocated once: read by the layer on every animation frame.
     private val layerBlock: GraphicsLayerScope.() -> Unit = {
@@ -318,7 +327,7 @@ private class TvFocusDrawNode(
                 }
 
                 TvFocusStyle.Row, TvFocusStyle.Backing -> {
-                    drawOutline(resolveOutline(size), TvPalette.Surface2, alpha = progress.coerceIn(0f, 1f))
+                    drawOutline(resolveOutline(size), TvPalette.FocusFill, alpha = progress.coerceIn(0f, 1f))
                 }
 
                 // The control swaps its own fill and content colour.
@@ -328,6 +337,17 @@ private class TvFocusDrawNode(
             }
         }
         drawContent()
+        if (progress > 0.001f) {
+            val bounds = if (style == TvFocusStyle.Card) state.glowBounds ?: Rect(Offset.Zero, size) else Rect(Offset.Zero, size)
+            translate(bounds.left, bounds.top) {
+                drawOutline(
+                    resolveOutline(bounds.size),
+                    brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), Color.White.copy(alpha = 0.18f))),
+                    alpha = progress.coerceIn(0f, 1f),
+                    style = Stroke(1.dp.toPx()),
+                )
+            }
+        }
     }
 
     private fun DrawScope.drawGlow(progress: Float) {
@@ -348,7 +368,7 @@ private class TvFocusDrawNode(
         drawSoftHalo(
             bounds = bounds,
             cornerPx = corner,
-            color = glow ?: Color.Black,
+            color = glow ?: Color.White,
             alpha = CARD_GLOW_ALPHA * progress.coerceIn(0f, 1f),
             ring = stroke,
             dropPx = CARD_GLOW_DROP.toPx(),
@@ -395,7 +415,7 @@ private class TvGlowAnchorNode :
     }
 }
 
-private const val CARD_GLOW_ALPHA = 0.35f
+private const val CARD_GLOW_ALPHA = 0.16f
 private const val HALO_RINGS = 12
 private val CARD_GLOW_DROP = 4.dp
 private val TV_CARD_CORNER = 12.dp
@@ -442,6 +462,6 @@ internal fun DrawScope.drawSoftHalo(
 private fun Density.defaultBackingShape(size: Size): Shape {
     val shortSide = minOf(size.width, size.height)
     val isSquare = shortSide > 0f && abs(size.width - size.height) / shortSide < 0.1f
-    if (isSquare) return CircleShape
+    if (isSquare) return TvShapes.Small
     return RoundedCornerShape(minOf(shortSide / 2f, TV_BACKING_MAX_CORNER.toPx()))
 }

@@ -1,16 +1,21 @@
 package com.maxrave.simpmusic.ui.tv
 
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class TvFocusTest {
     @Test
-    fun cardScaleIs110() = assertEquals(1.10f, focusScaleFor(TvFocusStyle.Card))
+    fun focusedArtworkStaysInsideItsGutter() {
+        for (width in listOf(TvDimens.SquareCard, TvDimens.WideCardWidth)) {
+            val growthPerSide = width.value * (focusScaleFor(TvFocusStyle.Card) - 1f) / 2f
+            assertTrue(growthPerSide <= TvDimens.CardInset.value)
+        }
+    }
 
     @Test
-    fun otherScalesFollowTheSpec() {
-        assertEquals(1.05f, focusScaleFor(TvFocusStyle.Control))
-        assertEquals(1.02f, focusScaleFor(TvFocusStyle.Row))
-        assertEquals(1.06f, focusScaleFor(TvFocusStyle.Backing))
+    fun wideRowsDoNotExpandIntoTheRail() {
+        assertTrue(800f * (focusScaleFor(TvFocusStyle.Row) - 1f) / 2f < 4f)
+        assertTrue(focusScaleFor(TvFocusStyle.Control) <= 1.02f)
+        assertTrue(focusScaleFor(TvFocusStyle.Backing) <= 1.02f)
     }
 }

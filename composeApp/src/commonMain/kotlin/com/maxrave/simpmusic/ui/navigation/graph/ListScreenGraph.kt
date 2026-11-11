@@ -30,68 +30,82 @@ fun NavGraphBuilder.listScreenGraph(
     navController: NavController,
 ) {
     composable<AlbumDestination> { entry ->
-        val data = entry.toRoute<AlbumDestination>()
-        ForceDarkContent {
-            AlbumScreen(
-                browseId = data.browseId,
-                navController = navController,
-            )
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<AlbumDestination>()
+            ForceDarkContent {
+                AlbumScreen(
+                    browseId = data.browseId,
+                    navController = navController,
+                )
+            }
         }
     }
     composable<ArtistDestination> { entry ->
-        val data = entry.toRoute<ArtistDestination>()
-        ForceDarkContent {
-            ArtistScreen(
-                channelId = data.channelId,
-                navController = navController,
-            )
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<ArtistDestination>()
+            ForceDarkContent {
+                ArtistScreen(
+                    channelId = data.channelId,
+                    navController = navController,
+                )
+            }
         }
     }
     composable<LocalPlaylistDestination> { entry ->
-        val data = entry.toRoute<LocalPlaylistDestination>()
-        ForceDarkContent {
-            LocalPlaylistScreen(
-                id = data.id,
-                navController = navController,
-            )
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<LocalPlaylistDestination>()
+            ForceDarkContent {
+                LocalPlaylistScreen(
+                    id = data.id,
+                    navController = navController,
+                )
+            }
         }
     }
     composable<MoreAlbumsDestination> { entry ->
-        val data = entry.toRoute<MoreAlbumsDestination>()
-        MoreAlbumsScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            type = data.type,
-            id = data.id,
-        )
-    }
-    composable<BrowseDestination> { entry ->
-        val data = entry.toRoute<BrowseDestination>()
-        BrowseScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            browseId = data.browseId,
-            params = data.params,
-            title = data.title,
-        )
-    }
-    composable<PlaylistDestination> { entry ->
-        val data = entry.toRoute<PlaylistDestination>()
-        ForceDarkContent {
-            PlaylistScreen(
-                playlistId = data.playlistId,
-                isYourYouTubePlaylist = data.isYourYouTubePlaylist,
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<MoreAlbumsDestination>()
+            MoreAlbumsScreen(
+                innerPadding = innerPadding,
                 navController = navController,
+                type = data.type,
+                id = data.id,
             )
         }
     }
-    composable<PodcastDestination> { entry ->
-        val data = entry.toRoute<PodcastDestination>()
-        ForceDarkContent {
-            PodcastScreen(
-                podcastId = data.podcastId,
+    composable<BrowseDestination> { entry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id, waitForContent = true) {
+            val data = entry.toRoute<BrowseDestination>()
+            BrowseScreen(
+                innerPadding = innerPadding,
                 navController = navController,
+                browseId = data.browseId,
+                params = data.params,
+                title = data.title,
             )
+        }
+    }
+    composable<PlaylistDestination> { entry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<PlaylistDestination>()
+            ForceDarkContent {
+                PlaylistScreen(
+                    playlistId = data.playlistId,
+                    isYourYouTubePlaylist = data.isYourYouTubePlaylist,
+                    navController = navController,
+                )
+            }
+        }
+    }
+    composable<PodcastDestination> { entry ->
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<PodcastDestination>()
+            ForceDarkContent {
+                PodcastScreen(
+                    podcastId = data.podcastId,
+                    navController = navController,
+                )
+            }
         }
     }
 }

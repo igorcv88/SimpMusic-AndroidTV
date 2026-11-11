@@ -9,6 +9,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.ImeAction
+import com.maxrave.simpmusic.ui.tv.LocalTvNavigation
+import com.maxrave.simpmusic.ui.tv.LocalTvDestination
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,7 +58,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.maxrave.simpmusic.ui.component.TvPullToRefreshBox as PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.ripple
@@ -65,6 +74,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -193,6 +204,7 @@ fun SearchScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val searchScreenState by searchViewModel.searchScreenState.collectAsStateWithLifecycle()
     val uiState by searchViewModel.searchScreenUIState.collectAsStateWithLifecycle()
+    com.maxrave.simpmusic.ui.tv.TvContentReady(uiState !is SearchScreenUIState.Loading)
     val searchHistory by searchViewModel.searchHistory.collectAsStateWithLifecycle()
     val moodAndGenres by searchViewModel.moodAndGenres.collectAsStateWithLifecycle()
     val moodArtwork by searchViewModel.moodArtwork.collectAsStateWithLifecycle()
@@ -203,11 +215,14 @@ fun SearchScreen(
     var isExpanded by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
+    val searchContentFocus = remember { FocusRequester() }
     val tvDevice = LocalTvDevice.current
-    LaunchedEffect(Unit) {
-        if (tvDevice && searchText.isEmpty()) {
+    val tvNavigation = LocalTvNavigation.current
+    val tvDestination = LocalTvDestination.current
+    var fieldPlaced by remember { mutableStateOf(false) }
+    LaunchedEffect(fieldPlaced) {
+        if (tvDevice && fieldPlaced && tvNavigation?.hasSavedFocus(tvDestination) != true) {
             focusRequester.requestFocus()
-            keyboardController?.show()
         }
     }
 
@@ -220,7 +235,7 @@ fun SearchScreen(
         focusManager.clearFocus()
         keyboardController?.hide()
     }
-    PlatformBackHandler(enabled = isSearchPanelVisible, onBack = dismissSearchPanel)
+    PlatformBackHandler(enabled = !tvDevice && isSearchPanelVisible, onBack = dismissSearchPanel)
 
     // The bar floats OVER the content (a Box, not a Column) so there is something behind it to
     // blur — same arrangement HomeScreen uses. Each branch owns a scroll state, hoisted here so
@@ -281,8 +296,8 @@ fun SearchScreen(
     var currentPlaceholderIndex by remember { mutableIntStateOf(0) }
 
     // Animate placeholder - pause when focused
-    LaunchedEffect(isFocused) {
-        while (!isFocused) {
+    LaunchedEffect(isFocused, tvDevice) {
+        while (!isFocused && !tvDevice) {
             delay(3000) // Change every 3 seconds
             currentPlaceholderIndex = (currentPlaceholderIndex + 1) % placeholderTexts.size
         }
@@ -330,7 +345,7 @@ fun SearchScreen(
     }
 
     LaunchedEffect(isFocused) {
-        if (isFocused) {
+        if (isFocused && !tvDevice) {
             isExpanded = true
         }
     }
@@ -339,7 +354,7 @@ fun SearchScreen(
         searchUIType =
             if (searchText.isNotEmpty() && isExpanded) {
                 SearchUIType.SEARCH_SUGGESTIONS
-            } else if (isFocused && isExpanded) {
+            } else if (isFocused && isExpanded && !tvDevice) {
                 SearchUIType.SEARCH_HISTORY
             } else if (searchText.isEmpty()) {
                 SearchUIType.EMPTY
@@ -356,7 +371,7 @@ fun SearchScreen(
                 if (!selectionState.isActive && searchUIType == SearchUIType.EMPTY) {
                     isExpanded = true
                     focusRequester.requestFocus()
-                    keyboardController?.show()
+                    if (!tvDevice) keyboardController?.show()
                 }
                 sharedViewModel.reloadDestinationDone()
             }
@@ -444,7 +459,7 @@ fun SearchScreen(
         // equal to the bar's measured height to keep its first item clear of it.
         Crossfade(
             targetState = searchUIType,
-            modifier = Modifier.fillMaxSize().then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
+            modifier = Modifier.fillMaxSize().then(if (tvDevice) Modifier.focusRequester(searchContentFocus).tvFocusRestorer().focusGroup() else Modifier).then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
         ) {
             when (it) {
                 SearchUIType.SEARCH_SUGGESTIONS -> {
@@ -590,7 +605,7 @@ fun SearchScreen(
                                     }
                                 }
                             }
-                            items(searchHistory) { historyItem ->
+                            items(searchHistory, key = { it }) { historyItem ->
                                 Row(
                                     modifier =
                                         Modifier
@@ -1091,27 +1106,18 @@ fun SearchScreen(
                 modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
             )
         }
-        // Search Bar with Animated Placeholder
-        SearchBar(
-            inputField = {
-                SearchBarDefaults.InputField(
-                    modifier = Modifier.then(if (tvDevice) Modifier.focusRequester(focusRequester) else Modifier).tvTextInput(),
-                    query = searchText,
-                    onQueryChange = { newText ->
-                        searchText = newText
-                    },
-                    onSearch = { query ->
+    val submitSearch: (String) -> Unit = { query ->
                         // A pasted YouTube link is a destination, not a query. Translating it into
                         // the app's own deep link hands it to the same intent flow that handles
                         // shared links, so it plays or opens straight away instead of being
                         // searched for as text. Anything else falls through to a normal search.
                         val deepLink = query.toAppDeepLinkOrNull()
                         if (deepLink != null) {
-                            focusManager.clearFocus()
+                            if (!tvDevice) focusManager.clearFocus()
                             sharedViewModel.setIntent(GenericIntent(data = deepLink))
                         } else if (query.isNotEmpty()) {
                             isSearchSubmitted = true
-                            focusManager.clearFocus()
+                            if (!tvDevice) focusManager.clearFocus()
                             searchViewModel.insertSearchHistory(query)
                             when (searchScreenState.searchType) {
                                 SearchType.ALL -> searchViewModel.searchAll(query)
@@ -1124,7 +1130,50 @@ fun SearchScreen(
                                 SearchType.PODCASTS -> searchViewModel.searchPodcast(query)
                             }
                         }
+                    }
+        if (tvDevice) {
+            val fieldState = rememberTextFieldState(searchText)
+            LaunchedEffect(fieldState) {
+                snapshotFlow { fieldState.text.toString() }.collect { searchText = it }
+            }
+            LaunchedEffect(searchText) {
+                if (fieldState.text.toString() != searchText) fieldState.setTextAndPlaceCursorAtEnd(searchText)
+            }
+            OutlinedTextField(
+                state = fieldState,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(0.78f)
+                    .widthIn(max = 800.dp)
+                    .focusRequester(focusRequester)
+                    .focusProperties { down = searchContentFocus }
+                    .tvTextInput(onActivate = {
+                        isExpanded = true
+                        isSearchSubmitted = false
+                    })
+                    .onFocusChanged { isFocused = it.isFocused }
+                    .onGloballyPositioned { fieldPlaced = true },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, showKeyboardOnFocus = false),
+                onKeyboardAction = {
+                    keyboardController?.hide()
+                    submitSearch(fieldState.text.toString())
+                },
+                placeholder = { Text(placeholderTexts[0], style = typo().labelMedium) },
+                leadingIcon = { Icon(SimpIcons.Search, contentDescription = null) },
+                shape = RoundedCornerShape(18.dp),
+            )
+        } else
+        // Search Bar with Animated Placeholder
+        SearchBar(
+            inputField = {
+                SearchBarDefaults.InputField(
+                    modifier = Modifier.then(if (tvDevice) Modifier.focusRequester(focusRequester) else Modifier).tvTextInput(),
+                    query = searchText,
+                    onQueryChange = { newText ->
+                        searchText = newText
                     },
+                    onSearch = submitSearch,
                     expanded = false,
                     onExpandedChange = {},
                     enabled = true,

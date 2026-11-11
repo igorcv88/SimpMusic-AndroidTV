@@ -565,7 +565,7 @@ fun ArtistScreen(
                                         }
                                     }
                                     // Back button — liquid glass, sibling of the backdrop source.
-                                    LiquidGlassIconButton(
+                                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { LiquidGlassIconButton(
                                         backdrop = artworkBackdrop,
                                         imageVector = SimpIcons.ArrowBackIosNew,
                                         shape = RoundedCornerShape(24.dp),
@@ -580,7 +580,7 @@ fun ArtistScreen(
                                                 .size(48.dp),
                                     ) {
                                         navController.navigateUp()
-                                    }
+                                    } }
                                     // Top-right pill mirroring the back button, shaped like the
                                     // Playlist header's: [video ⇄ picture] when the artist has an animated
                                     // artwork, then share. A sibling of the backdrop source, like the back button.
@@ -743,14 +743,14 @@ fun ArtistScreen(
                             },
                             navigationIcon = {
                                 Box(Modifier.padding(horizontal = 5.dp)) {
-                                    IconButton(onClick = { navController.navigateUp() }) {
+                                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { IconButton(onClick = { navController.navigateUp() }) {
                                         Icon(
                                             imageVector = SimpIcons.ArrowBackIosNew,
                                             contentDescription = "Back",
                                             tint = Color.White,
                                             modifier = Modifier.size(20.dp),
                                         )
-                                    }
+                                    } }
                                 }
                             },
                             colors =

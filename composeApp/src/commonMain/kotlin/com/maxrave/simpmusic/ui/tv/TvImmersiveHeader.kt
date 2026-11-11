@@ -179,17 +179,7 @@ fun rememberTvHomeCard(
     return modifier to focused
 }
 
-/**
- * Home's immersive header (spec, "P2-A: identity"): 220 dp tall, the item's artwork on the right
- * under a cinematic scrim, its title in displaySmall on one line and its subtitle in bodyLarge on
- * at most two. It cross-fades when [item] changes.
- *
- * It draws no background of its own: over the artwork-free part the page (the ambient background)
- * shows through. A missing artwork, a blank URL or a failed load leaves the text on the page with
- * no picture and no placeholder box.
- *
- * It is not focusable and adds no focus target.
- */
+/** Pinned, non-interactive Home metadata. Artwork is shown only in the ambient backdrop. */
 @Composable
 fun TvImmersiveHeader(
     item: HomeHeaderItem?,
@@ -202,7 +192,7 @@ fun TvImmersiveHeader(
             .height(TvDimens.ImmersiveHeaderHeight),
     ) {
         Crossfade(targetState = item, animationSpec = motion.fadeInSpec(), label = "tvImmersiveHeader") { current ->
-            if (current != null) HeaderContent(current, motion.fadeInMs)
+            if (current != null) HeaderContent(current)
         }
     }
 }
@@ -225,58 +215,9 @@ fun TvHeaderTintEffect(controller: TvHeaderController) {
 @Composable
 private fun HeaderContent(
     item: HomeHeaderItem,
-    fadeMs: Int,
 ) {
-    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-    val model = ambientImageModel(item.artworkUrl)
-    var failed by remember(item.id) { mutableStateOf(false) }
     val type = typo()
     Box(Modifier.fillMaxSize()) {
-        if (model != null && !failed) {
-            val context = LocalPlatformContext.current
-            val request =
-                remember(context, model, fadeMs) {
-                    ImageRequest
-                        .Builder(context)
-                        .data(model)
-                        .crossfade(fadeMs)
-                        .build()
-                }
-            AsyncImage(
-                model = request,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                onError = { failed = true },
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .width(HEADER_ARTWORK_WIDTH)
-                        .fillMaxHeight()
-                        .drawWithCache {
-                            // Cinematic scrim: the picture dissolves into the page toward the text
-                            // and toward the rows below, so it has no visible edge on either side.
-                            val page = TvPalette.Background
-                            val side =
-                                Brush.horizontalGradient(
-                                    0f to page,
-                                    HEADER_SIDE_FADE to page.copy(alpha = 0.55f),
-                                    1f to Color.Transparent,
-                                    startX = if (rtl) size.width else 0f,
-                                    endX = if (rtl) 0f else size.width,
-                                )
-                            val bottom =
-                                Brush.verticalGradient(
-                                    HEADER_BOTTOM_FADE to Color.Transparent,
-                                    1f to page,
-                                )
-                            onDrawWithContent {
-                                drawContent()
-                                drawRect(side)
-                                drawRect(bottom)
-                            }
-                        },
-            )
-        }
         Column(
             modifier =
                 Modifier

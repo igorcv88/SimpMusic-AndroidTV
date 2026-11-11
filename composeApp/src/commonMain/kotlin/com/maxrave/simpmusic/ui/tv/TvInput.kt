@@ -16,6 +16,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
@@ -155,7 +156,7 @@ fun Modifier.tvSliderKeys(value: Float, range: ClosedFloatingPointRange<Float>, 
 }
 
 /** Explicit OK reopens the TV IME after Back; arrows can leave an input without a touch. */
-fun Modifier.tvTextInput(): Modifier = composed {
+fun Modifier.tvTextInput(onActivate: () -> Unit = {}): Modifier = composed {
     if (!LocalTvDevice.current) return@composed this
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
@@ -163,8 +164,11 @@ fun Modifier.tvTextInput(): Modifier = composed {
     tvFocusIndicator().onFocusChanged { ownsFocus = it.isFocused }.onPreviewKeyEvent { event ->
         if (!ownsFocus) return@onPreviewKeyEvent false
         when (event.key) {
-            Key.DirectionCenter -> {
-                if (event.type == KeyEventType.KeyUp) keyboard?.show()
+            Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                if (event.type == KeyEventType.KeyUp) {
+                    onActivate()
+                    keyboard?.show()
+                }
                 true
             }
             Key.DirectionDown, Key.DirectionUp -> {
@@ -187,9 +191,11 @@ fun Modifier.tvFocusRestorer(): Modifier = composed {
 fun Modifier.tvInitialFocus(): Modifier = composed {
     if (!LocalTvDevice.current) return@composed this
     val requester = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        requester.requestFocus()
+    val navigation = LocalTvNavigation.current
+    val destination = LocalTvDestination.current
+    var placed by remember { mutableStateOf(false) }
+    LaunchedEffect(placed, navigation, destination) {
+        if (placed && navigation?.hasSavedFocus(destination) != true) requester.requestFocus()
     }
-    this.then(Modifier.focusRequester(requester))
+    this.focusRequester(requester).onGloballyPositioned { placed = true }
 }

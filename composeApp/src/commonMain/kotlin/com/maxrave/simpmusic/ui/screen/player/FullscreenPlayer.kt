@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.screen.player
 
+import com.maxrave.simpmusic.expect.ui.PlatformBackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
@@ -156,6 +157,11 @@ fun FullscreenPlayer(
         mutableStateOf(tvDevice)
     }
     var showQueue by rememberSaveable { mutableStateOf(false) }
+    PlatformBackHandler(
+        enabled = tvDevice && showHideFullscreenOverlay && !showBottom && !showQueue && addLyricsFor == null,
+    ) {
+        showHideFullscreenOverlay = false
+    }
     // Bumped on every remote key, so the controls stay up while the user is still pressing keys.
     var lastKeyTick by remember { mutableIntStateOf(0) }
     // The key that brought the controls back is swallowed whole, so its release cannot press
@@ -425,13 +431,15 @@ fun FullscreenPlayer(
                             },
                             navigationIcon = {
                                 Box(Modifier.padding(horizontal = 5.dp)) {
-                                    RippleIconButton(
-                                        SimpIcons.ArrowBackIosNew,
-                                        Modifier
-                                            .size(32.dp),
-                                        true,
-                                    ) {
-                                        navController.navigateUp()
+                                    if (!LocalTvDevice.current) {
+                                        RippleIconButton(
+                                            SimpIcons.ArrowBackIosNew,
+                                            Modifier
+                                                .size(32.dp),
+                                            true,
+                                        ) {
+                                            navController.navigateUp()
+                                        }
                                     }
                                 }
                             },
@@ -836,30 +844,32 @@ fun FullscreenPlayer(
                                             }
                                         }
                                         Spacer(Modifier.width(8.dp))
-                                        FilledTonalIconButton(
-                                            colors =
-                                                IconButtonDefaults.iconButtonColors().copy(
-                                                    containerColor = Color.Transparent,
-                                                ),
-                                            modifier =
-                                                Modifier
-                                                    .size(32.dp)
-                                                    .aspectRatio(1f)
-                                                    .clip(
-                                                        CircleShape,
-                                                    ).tvFocusIndicator(),
-                                            onClick = {
-                                                navController.navigateUp()
-                                            },
-                                        ) {
-                                            Icon(
-                                                imageVector = SimpIcons.FullscreenExit,
-                                                tint = Color.White,
-                                                contentDescription = "",
+                                        if (!tvDevice) {
+                                            FilledTonalIconButton(
+                                                colors =
+                                                    IconButtonDefaults.iconButtonColors().copy(
+                                                        containerColor = Color.Transparent,
+                                                    ),
                                                 modifier =
                                                     Modifier
-                                                        .size(24.dp),
-                                            )
+                                                        .size(32.dp)
+                                                        .aspectRatio(1f)
+                                                        .clip(
+                                                            CircleShape,
+                                                        ).tvFocusIndicator(),
+                                                onClick = {
+                                                    navController.navigateUp()
+                                                },
+                                            ) {
+                                                Icon(
+                                                    imageVector = SimpIcons.FullscreenExit,
+                                                    tint = Color.White,
+                                                    contentDescription = "",
+                                                    modifier =
+                                                        Modifier
+                                                            .size(24.dp),
+                                                )
+                                            }
                                         }
                                     }
                                 }

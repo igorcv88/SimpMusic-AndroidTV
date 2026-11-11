@@ -43,6 +43,8 @@ import com.maxrave.simpmusic.ui.component.taste.libraryCardColor
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDynamicPlaylistDestination
 import com.maxrave.simpmusic.ui.screen.library.LibraryDynamicPlaylistType
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocus
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -143,7 +145,7 @@ private fun FavoriteCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(132.dp),
+        modifier = Modifier.fillMaxWidth().height(132.dp).tvFocus(TvFocusStyle.Card, CardShape),
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = container),
     ) {
@@ -199,7 +201,7 @@ private fun CollectionCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = modifier.height(118.dp),
+        modifier = modifier.height(118.dp).tvFocus(TvFocusStyle.Card, CardShape),
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = container),
     ) {

@@ -2,6 +2,7 @@ package com.maxrave.simpmusic.ui.tv
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,8 +33,8 @@ import com.maxrave.simpmusic.ui.theme.typo
 
 /**
  * The `Control` focus style as components: a capsule that is `Surface2` with primary text at rest
- * and turns into a `FocusFill` pill with dark content when focused, the way the Google TV launcher
- * marks its buttons. The scale (1.05) comes from [tvFocus]; the colours are swapped here and reach
+ * and gains a translucent `FocusFill` surface with light content when focused. The fine rim
+ * comes from [tvFocus]; the content colours reach
  * the content through [LocalContentColor], so a `Text` inside must not name a colour of its own.
  */
 @Composable
@@ -45,12 +46,13 @@ fun TvButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     val contentColor = if (focused) TvPalette.OnFocus else TvPalette.TextPrimary
     Row(
         modifier =
             modifier
                 .tvFocus(TvFocusStyle.Control)
-                .controlFill(focused = focused, restFill = TvPalette.Surface2)
+                .controlFill(focused = focused, pressed = pressed, restFill = TvPalette.Surface2)
                 .clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onClick)
                 .height(TV_BUTTON_HEIGHT)
                 .defaultMinSize(minWidth = TV_BUTTON_HEIGHT)
@@ -76,11 +78,12 @@ fun TvIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier =
             modifier
                 .tvFocus(TvFocusStyle.Control)
-                .controlFill(focused = focused, restFill = Color.Transparent)
+                .controlFill(focused = focused, pressed = pressed, restFill = Color.Transparent)
                 .clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onClick)
                 .size(size),
         contentAlignment = Alignment.Center,
@@ -97,7 +100,7 @@ fun TvIconButton(
 /**
  * A filter pill. Selection and focus stay distinct: a selected chip is filled with `Surface2` and
  * has primary text, an unselected one is `Surface1` with secondary text, and focus turns either
- * into the `FocusFill` pill.
+ * into the translucent `FocusFill` surface with a brighter rim.
  */
 @Composable
 fun TvChip(
@@ -108,6 +111,7 @@ fun TvChip(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     val contentColor =
         when {
             focused -> TvPalette.OnFocus
@@ -118,7 +122,7 @@ fun TvChip(
         modifier =
             modifier
                 .tvFocus(TvFocusStyle.Control)
-                .controlFill(focused = focused, restFill = if (selected) TvPalette.Surface2 else TvPalette.Surface1)
+                .controlFill(focused = focused, pressed = pressed, restFill = if (selected) TvPalette.Surface2 else TvPalette.Surface1)
                 .clickable(interactionSource = interactionSource, indication = null, role = Role.Tab, onClick = onClick)
                 .height(TV_CHIP_HEIGHT)
                 .padding(horizontal = 16.dp),
@@ -138,9 +142,14 @@ fun TvChip(
 internal fun Modifier.controlFill(
     focused: Boolean,
     restFill: Color,
+    pressed: Boolean = false,
 ): Modifier =
     drawBehind {
-        val fill = if (focused) TvPalette.FocusFill else restFill
+        val fill = when {
+            pressed -> Color.White.copy(alpha = 0.1f)
+            focused -> TvPalette.FocusFill
+            else -> restFill
+        }
         if (fill.alpha > 0f) {
             drawOutline(TvShapes.Control.createOutline(size, layoutDirection, this), fill)
         }

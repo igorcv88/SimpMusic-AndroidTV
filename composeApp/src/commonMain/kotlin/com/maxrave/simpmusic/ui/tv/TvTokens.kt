@@ -30,10 +30,10 @@ object TvDimens {
     val SidePanelWidth = 400.dp
 
     /** Home's immersive header (spec, "P2-A: identity"). */
-    val ImmersiveHeaderHeight = 220.dp
+    val ImmersiveHeaderHeight = 188.dp
 
     /** Radius of the `Card` focus glow and of the elevated glass shadow. */
-    val FocusGlow = 24.dp
+    val FocusGlow = 12.dp
     val GlassShadow = 16.dp
 
     /** The selected destination's dot in the rail. */
@@ -48,8 +48,8 @@ object TvDimens {
 }
 
 object TvShapes {
-    val Card: Shape = RoundedCornerShape(12.dp)
-    val Small: Shape = RoundedCornerShape(8.dp)
-    val Panel: Shape = RoundedCornerShape(24.dp)
-    val Control: Shape = CircleShape
+    val Card: Shape = TvSquircleShape(16.dp)
+    val Small: Shape = TvSquircleShape(12.dp)
+    val Panel: Shape = TvSquircleShape(24.dp)
+    val Control: Shape = TvSquircleShape(16.dp)
 }

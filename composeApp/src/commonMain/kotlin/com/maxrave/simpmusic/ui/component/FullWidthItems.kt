@@ -147,10 +147,7 @@ fun SongFullWidthItems(
     val offsetX = remember { Animatable(initialValue = 0f) }
     var heightDp by remember { mutableStateOf(0.dp) }
 
-    Box(
-        modifier =
-        modifier,
-    ) {
+    Box {
         Crossfade(
             offsetX.value >= maxOffset / 2,
         ) { shouldShowAddToQueue ->

@@ -113,14 +113,14 @@ fun DiscordLoginScreen(
             },
             navigationIcon = {
                 Box(Modifier.padding(horizontal = 5.dp)) {
-                    RippleIconButton(
+                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                         SimpIcons.ArrowBackIosNew,
                         Modifier.size(32.dp),
                         true,
                         tint = MaterialTheme.colorScheme.onSurface,
                     ) {
                         navController.navigateUp()
-                    }
+                    } }
                 }
             },
             actions = {

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -153,16 +154,14 @@ fun TvNavigationRail(
     // Entering the rail redirects to the selected item, and that request enters the rail again.
     val redirecting = remember { booleanArrayOf(false) }
 
-    // P1 behaviour, kept: a TV has no touch to place focus, so the app starts with it on Home.
-    LaunchedEffect(Unit) {
-        runCatching { requesters[BottomNavScreen.Home.ordinal]?.requestFocus() }
-    }
+    val navigation = LocalTvNavigation.current
+
 
     if (hasFocus) {
         // Composed only while the rail has focus, so it registers after — and therefore ahead of —
         // the navigation graph's own back handling.
         PlatformBackHandler(enabled = true) {
-            runCatching { contentRequester?.requestFocus() }
+            if (navigation?.restoreContent() != true) contentRequester?.requestFocus()
         }
     }
 
@@ -172,7 +171,8 @@ fun TvNavigationRail(
             .zIndex(1f)
             .width(TvDimens.RailCollapsed)
             .fillMaxHeight()
-            .onFocusChanged { hasFocus = it.hasFocus }
+            .focusRequester(navigation?.railFocus ?: remember { FocusRequester() })
+            .onFocusChanged { hasFocus = it.hasFocus; navigation?.railHasFocus = it.hasFocus }
             .focusProperties {
                 onEnter = {
                     if (!redirecting[0]) {
@@ -189,7 +189,7 @@ fun TvNavigationRail(
                     val towardContent = if (rtl) FocusDirection.Left else FocusDirection.Right
                     if (requestedFocusDirection == towardContent) {
                         val moved =
-                            runCatching { contentRequester?.requestFocus(requestedFocusDirection) == true }.getOrDefault(false)
+                            navigation?.restoreContent() == true || contentRequester?.requestFocus(requestedFocusDirection) == true
                         if (moved) cancelFocusChange()
                     }
                 }

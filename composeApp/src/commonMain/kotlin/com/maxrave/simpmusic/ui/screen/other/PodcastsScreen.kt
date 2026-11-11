@@ -197,11 +197,11 @@ fun PodcastScreen(
                                             .padding(16.dp)
                                             .windowInsetsPadding(WindowInsets.statusBars),
                                 ) {
-                                    RippleIconButton(
+                                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                                         imageVector = SimpIcons.ArrowBackIosNew,
                                     ) {
                                         navController.navigateUp()
-                                    }
+                                    } }
                                 }
                                 Column(
                                     horizontalAlignment = Alignment.Start,
@@ -434,13 +434,13 @@ fun PodcastScreen(
                         },
                         navigationIcon = {
                             Box(Modifier.padding(horizontal = 5.dp)) {
-                                RippleIconButton(
+                                if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                                     SimpIcons.ArrowBackIosNew,
                                     Modifier.size(32.dp),
                                     true,
                                 ) {
                                     navController.navigateUp()
-                                }
+                                } }
                             }
                         },
                         colors =

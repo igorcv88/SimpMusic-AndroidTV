@@ -23,13 +23,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Precision
 
-/**
- * How the ambient background is produced.
- *
- * NOT YET APPROVED (spec, "Materials"): stretching a tiny decode can read as pixelation instead of
- * blur, so no size counts as accepted until the owner has seen the three on the TV. [Compare] exists
- * for that session; [Gradient] is the fallback if all three read as pixels.
- */
+/** Ambient artwork is decoded at a bounded resolution, blurred off-main and cached by Coil. */
 sealed interface TvAmbientStyle {
     /** The artwork decoded at [decodePx] x [decodePx] and stretched to the screen, bilinear. */
     data class Artwork(
@@ -47,30 +41,18 @@ sealed interface TvAmbientStyle {
     data object Compare : TvAmbientStyle
 }
 
-/** The decode size the plan starts from. The candidates to compare are 16, 32 and 64. */
-internal const val AMBIENT_DECODE_PX = 32
-
-/**
- * The one switch for the ambient look. Set it to [TvAmbientStyle.Compare] for the comparison
- * screenshot, then to the candidate the owner picks.
- */
+/** Enough samples for smooth full-screen gradients after CPU blur, without full-size bitmap churn. */
+internal const val AMBIENT_DECODE_PX = 256
 internal val TV_AMBIENT_STYLE: TvAmbientStyle = TvAmbientStyle.Artwork(AMBIENT_DECODE_PX)
 
 /** The image model for the ambient picture: null for a null or blank URL, otherwise the URL. */
 fun ambientImageModel(url: String?): String? = url?.takeIf { it.isNotBlank() }
 
 /**
- * The page behind a TV screen: [TvPalette.Background] full-bleed, the current artwork over it at
- * 55% as a heavy blur stand-in, and a bottom scrim.
- *
- * The blur is not computed: the artwork is decoded at a few pixels and stretched, which costs one
- * tiny bitmap and no RenderEffect, so it is the same on API 30 as on 34 and adds nothing while the
- * page scrolls or focus moves. The picture changes only when [artworkUrl] does.
- *
- * With no artwork, a blank URL or a failed load, only [TvPalette.Background] and the scrim are
- * drawn: no stale picture from the previous item, no black hole.
- *
- * @param tint the artwork's tint when the caller already has it, for [TvAmbientStyle.Gradient].
+ * Bounded artwork behind a dark scrim. On Android the Coil transformation performs a three-pass
+ * CPU blur on Dispatchers.Default, including API 30. Coil caches the transformed image by URL,
+ * resolution and blur version; AsyncImage cancels obsolete requests when a model leaves composition.
+ * No image processing runs from a draw callback or animation frame.
  */
 @Composable
 fun TvAmbientBackground(
@@ -140,7 +122,8 @@ private fun AmbientPicture(
                 // cover gives 34 or 68 px), and the candidates would not be the sizes they are named.
                 .size(decodePx, decodePx)
                 .precision(Precision.EXACT)
-                .memoryCacheKey("tvAmbient:$decodePx:$model")
+                .ambientBlur()
+                .memoryCacheKey("tvAmbient:gaussian3:r18:v1:$decodePx:$model")
                 .crossfade(fadeMs)
                 .build()
         }
@@ -148,7 +131,7 @@ private fun AmbientPicture(
         model = request,
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
-        filterQuality = FilterQuality.Low,
+        filterQuality = FilterQuality.High,
         alpha = AMBIENT_ALPHA,
         modifier = modifier,
     )

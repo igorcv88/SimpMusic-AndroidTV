@@ -59,7 +59,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import com.maxrave.simpmusic.ui.component.TvPullToRefreshBox as PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -328,6 +328,7 @@ fun HomeScreen(
     val moodMomentAndGenre by viewModel.exploreMoodItem.collectAsStateWithLifecycle()
     val chartLoading by viewModel.loadingChart.collectAsStateWithLifecycle()
     val loading by viewModel.loading.collectAsStateWithLifecycle()
+    com.maxrave.simpmusic.ui.tv.TvContentReady(!loading)
     val regionChart by viewModel.regionCodeChart.collectAsStateWithLifecycle()
     val reloadDestination by sharedViewModel.reloadDestination.collectAsStateWithLifecycle()
     val pullToRefreshState = rememberPullToRefreshState()
@@ -336,6 +337,7 @@ fun HomeScreen(
     // TV: UP from the first content row goes to the Now Playing chip (or the profile when nothing is
     // loaded and the chip is absent), not to whichever top-bar item happens to sit nearest above.
     val tvChipFocus = remember { FocusRequester() }
+    val tvRailFocus = com.maxrave.simpmusic.ui.tv.LocalTvNavigation.current?.railFocus ?: FocusRequester.Default
     val tvProfileFocus = remember { FocusRequester() }
     // TV: the immersive header shows the card focus has rested on (TvHeaderController), and the
     // first card of the page until focus has rested anywhere.
@@ -804,7 +806,7 @@ fun HomeScreen(
             // refreshing stays available by selecting Home again in the rail (reloadDestination).
             enabled = !tvDevice,
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                if (!tvDevice) PullToRefreshDefaults.Indicator(
                     state = pullToRefreshState,
                     isRefreshing = isRefreshing,
                     modifier =
@@ -841,7 +843,7 @@ fun HomeScreen(
                     TvHomeList(tvHeader) {
                     LazyColumn(
                         state = scrollState,
-                        verticalArrangement = Arrangement.spacedBy(if (tvDevice) TvDimens.RowGap - 16.dp else 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (tvDevice) TvDimens.RowGap else 8.dp),
                         contentPadding =
                             if (tvDevice) PaddingValues(top = 8.dp, bottom = TvDimens.SafeVertical) else PaddingValues(0.dp),
                         modifier =
@@ -987,6 +989,14 @@ fun HomeScreen(
                                                     },
                                                 navController = navController,
                                                 viewModel = viewModel,
+                                                onTopExit = if (tvDevice && index == 0) {
+                                                    {
+                                                        tvChipFocus.requestFocus(FocusDirection.Up) ||
+                                                            tvProfileFocus.requestFocus(FocusDirection.Up)
+                                                    }
+                                                } else {
+                                                    null
+                                                },
                                             )
                                         }
                                     } else if (item.isSongCardShelf()) {
@@ -1204,7 +1214,7 @@ fun HomeScreen(
                             .height(56.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.padding(start = 16.dp, end = 8.dp).focusRequester(tvProfileFocus)) {
+                    Box(Modifier.padding(start = 16.dp, end = 12.dp).focusRequester(tvProfileFocus).then(if (tvDevice) Modifier.focusProperties { left = tvRailFocus } else Modifier)) {
                         HomeAccountButton(
                             accountName = accountInfo?.first,
                             thumbnailUrl = accountInfo?.second,
@@ -1397,7 +1407,7 @@ private fun HomeAccountButton(
                     .onFocusChanged { focused = it.isFocused }
                     .background(if (focused) TvPalette.FocusFill else Color.Transparent, CircleShape)
                     .clickable { menuOpen = true }
-                    .padding(if (focused) 4.dp else 0.dp),
+                    .padding(3.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 AccountAvatar(signedIn, thumbnailUrl, 44.dp, displayName)
@@ -1529,6 +1539,7 @@ fun QuickPicks(
     homeItem: HomeItem,
     navController: NavController,
     viewModel: HomeViewModel = koinViewModel(),
+    onTopExit: (() -> Boolean)? = null,
 ) {
     val lazyListState = rememberLazyGridState()
     val snapperFlingBehavior = rememberSnapFlingBehavior(SnapLayoutInfoProvider(lazyGridState = lazyListState, snapPosition = SnapPosition.Start))
@@ -1583,11 +1594,27 @@ fun QuickPicks(
         }
         LazyHorizontalGrid(
             rows = GridCells.Fixed(4),
-            modifier = Modifier.height(256.dp).mouseDragScroll(lazyListState, snapperFlingBehavior),
+            modifier = Modifier.height(if (LocalTvDevice.current) 284.dp else 256.dp)
+                .then(
+                    if (onTopExit != null) {
+                        Modifier.focusProperties {
+                            onExit = {
+                                if (requestedFocusDirection == FocusDirection.Up && onTopExit()) {
+                                    cancelFocusChange()
+                                }
+                            }
+                        }.focusGroup()
+                    } else {
+                        Modifier
+                    },
+                )
+                .mouseDragScroll(lazyListState, snapperFlingBehavior),
+            verticalArrangement = Arrangement.spacedBy(if (LocalTvDevice.current) 6.dp else 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (LocalTvDevice.current) 12.dp else 0.dp),
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
         ) {
-            items(homeItem.contents, key = { it.hashCode() }) {
+            items(homeItem.contents, key = { it?.videoId ?: it?.playlistId ?: it?.browseId ?: it?.title ?: "empty" }) {
                 if (it != null) {
                     QuickPicksItem(
                         onClick = {

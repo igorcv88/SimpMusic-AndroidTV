@@ -40,90 +40,105 @@ fun AppNavigationGraph(
     showNowPlayingSheet: () -> Unit = {},
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
+    val tv = LocalTvDevice.current
     NavHost(
         navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn() + slideInHorizontally { -it }
+            if (tv) androidx.compose.animation.EnterTransition.None else fadeIn() + slideInHorizontally { -it }
         },
         exitTransition = {
-            fadeOut() + slideOutHorizontally { it }
+            if (tv) androidx.compose.animation.ExitTransition.None else fadeOut() + slideOutHorizontally { it }
         },
         popEnterTransition = {
-            fadeIn() + slideInHorizontally { -it }
+            if (tv) androidx.compose.animation.EnterTransition.None else fadeIn() + slideInHorizontally { -it }
         },
         popExitTransition = {
-            fadeOut() + slideOutHorizontally { it }
+            if (tv) androidx.compose.animation.ExitTransition.None else fadeOut() + slideOutHorizontally { it }
         },
     ) {
         // Bottom bar destinations
-        composable<HomeDestination> {
-            HomeScreen(
-                onScrolling = onScrolling,
-                navController = navController,
-            )
+        composable<HomeDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id, root = true, waitForContent = true) {
+                HomeScreen(
+                    onScrolling = onScrolling,
+                    navController = navController,
+                )
+            }
         }
-        composable<SearchDestination> {
-            SearchScreen(
-                navController = navController,
-            )
+        composable<SearchDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id, root = true, waitForContent = true) {
+                SearchScreen(
+                    navController = navController,
+                )
+            }
         }
-        composable<LibraryDestination> {
-            LibraryScreen(
-                innerPadding = innerPadding,
-                navController = navController,
-                onScrolling = onScrolling,
-            )
+        composable<LibraryDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id, root = true) {
+                LibraryScreen(
+                    innerPadding = innerPadding,
+                    navController = navController,
+                    onScrolling = onScrolling,
+                )
+            }
         }
         // Only reachable as a tab while signed in to YouTube
-        composable<MixForYouDestination> {
-            MixForYouScreen(
-                innerPadding = innerPadding,
-                navController = navController,
-                onScrolling = onScrolling,
-            )
+        composable<MixForYouDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id, root = true) {
+                MixForYouScreen(
+                    innerPadding = innerPadding,
+                    navController = navController,
+                    onScrolling = onScrolling,
+                )
+            }
         }
         // Only reachable as a tab while local tracking is enabled.
         // ForceDarkContent for the same reason as album/playlist/artist: the page background comes
         // from the artwork via toImmersiveBackground(), which always lands dark, so the light
         // theme's dark-on-light text and icons would be unreadable on it.
-        composable<AnalyticsDestination> {
-            ForceDarkContent {
-                AnalyticsScreen(
-                    navController = navController,
-                    innerPadding = innerPadding,
-                )
+        composable<AnalyticsDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id, root = true) {
+                ForceDarkContent {
+                    AnalyticsScreen(
+                        navController = navController,
+                        innerPadding = innerPadding,
+                    )
+                }
             }
         }
         // Reached only from the Analytics screen's entry banner, so it inherits that screen's
         // gate on local tracking. ForceDarkContent for a different reason than Analytics: the reel
         // is drawn on its own near-black ground whatever the user's theme is, because it is an
         // event and because every card is also a share image that has to survive leaving the app.
-        composable<WrappedDestination> {
-            ForceDarkContent {
-                WrappedScreen(
-                    navController = navController,
-                    hideNavBar = hideNavBar,
-                    // Deliberately not the fullscreen player's `showNavBar(true)` + open sheet:
-                    // leaving the reel goes back to Analytics, and raising the Now Playing sheet
-                    // over it would be a screen the user never asked for.
-                    showNavBar = { showNavBar(false) },
-                )
+        composable<WrappedDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+                ForceDarkContent {
+                    WrappedScreen(
+                        navController = navController,
+                        hideNavBar = hideNavBar,
+                        // Deliberately not the fullscreen player's `showNavBar(true)` + open sheet:
+                        // leaving the reel goes back to Analytics, and raising the Now Playing sheet
+                        // over it would be a screen the user never asked for.
+                        showNavBar = { showNavBar(false) },
+                    )
+                }
             }
         }
-        composable<FullscreenDestination> {
-            // On a TV this screen IS Now Playing, so leaving it goes back to the page underneath;
-            // reopening the sheet there would bring the player straight back.
-            val tvDevice = LocalTvDevice.current
-            ForceDarkContent {
-                FullscreenPlayer(
-                    navController,
-                    hideNavBar = hideNavBar,
-                    showNavBar = {
-                        showNavBar.invoke(true)
-                        if (!tvDevice) showNowPlayingSheet.invoke()
-                    },
-                )
+        composable<FullscreenDestination> { tvEntry ->
+            com.maxrave.simpmusic.ui.tv.TvDestination(tvEntry.id) {
+                // On a TV this screen IS Now Playing, so leaving it goes back to the page underneath;
+                // reopening the sheet there would bring the player straight back.
+                val tvDevice = LocalTvDevice.current
+                ForceDarkContent {
+                    FullscreenPlayer(
+                        navController,
+                        hideNavBar = hideNavBar,
+                        showNavBar = {
+                            showNavBar.invoke(true)
+                            if (!tvDevice) showNowPlayingSheet.invoke()
+                        },
+                    )
+                }
             }
         }
         // Home screen graph

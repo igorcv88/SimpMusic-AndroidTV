@@ -198,12 +198,12 @@ fun NotificationScreen(
                     )
                 },
                 navigationIcon = {
-                    RippleIconButton(
+                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                         imageVector = SimpIcons.ArrowBackIosNew,
                         tint = MaterialTheme.colorScheme.onSurface,
                     ) {
                         navController.navigateUp()
-                    }
+                    } }
                 },
                 // Transparent, or the default surface container paints an opaque strip over the
                 // very top of AmbientThemeGlow — the one part of it that actually carries colour.

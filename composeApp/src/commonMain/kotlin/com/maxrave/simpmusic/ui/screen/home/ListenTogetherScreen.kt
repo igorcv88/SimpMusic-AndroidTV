@@ -451,7 +451,7 @@ private fun BoxScope.BackButton(
     // column it used to sit in, what is behind it is the flat page background, and glass with
     // nothing to refract renders as a grey coin. Floating it over the content gives it the page to
     // refract — and keeps it reachable once the page has scrolled, which the in-flow one did not.
-    LiquidGlassIconButton(
+    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { LiquidGlassIconButton(
         backdrop = backdrop,
         imageVector = SimpIcons.ArrowBackIosNew,
         // NOT the default Color.White: every other caller sits on a ForceDark screen, but this page
@@ -467,7 +467,7 @@ private fun BoxScope.BackButton(
                 .size(48.dp),
         onClick = onBack,
     )
-}
+ }}
 
 /**
  * The page title, left-aligned and large enough to be the biggest thing on screen after the room

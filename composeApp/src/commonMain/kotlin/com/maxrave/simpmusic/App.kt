@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -158,7 +159,9 @@ fun App(
     onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
     onOpenDesktopNotificationSettings: (doNotShowAgain: Boolean) -> Unit = {},
 ) {
+    val tvNavigation = remember { com.maxrave.simpmusic.ui.tv.TvNavigationState() }
     CompositionLocalProvider(
+        com.maxrave.simpmusic.ui.tv.LocalTvNavigation provides tvNavigation,
         com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice(),
         // Springs and fades for the TV design; a system animator scale of 0 turns them into snaps.
         com.maxrave.simpmusic.ui.tv.LocalTvMotion provides
@@ -225,6 +228,13 @@ private fun AppContent(
     // On a TV the player is the fullscreen one: Now Playing opens it instead of the side panel or
     // the sheet, and Home's top bar carries the mini player (TvNowPlayingChip).
     val tvDevice = LocalTvDevice.current
+    LaunchedEffect(tvDevice, navController) {
+        com.maxrave.simpmusic.ui.tv.TvPlaybackRequests.events.collect {
+            if (tvDevice && navController.currentDestination?.hasRoute(FullscreenDestination::class) != true) {
+                navController.navigate(FullscreenDestination) { launchSingleTop = true }
+            }
+        }
+    }
     LaunchedEffect(tvDevice, isShowNowPlaylistScreen) {
         if (tvDevice && isShowNowPlaylistScreen) {
             isShowNowPlaylistScreen = false
@@ -548,6 +558,7 @@ private fun AppContent(
     // TV: the content area's focus entry point. The rail sends focus here when the user leaves it
     // toward the content or presses Back, and the area restores its last focused element.
     val tvContentFocus = remember { FocusRequester() }
+    val tvNavigation = com.maxrave.simpmusic.ui.tv.LocalTvNavigation.current
 
     AppTheme(
         // The TV design is dark only: its palette and contrast are defined against a dark page.
@@ -820,7 +831,13 @@ private fun AppContent(
                                                     // it to the element that had it.
                                                     Modifier
                                                         .focusRequester(tvContentFocus)
-                                                        .focusRestorer()
+                                                        .focusProperties {
+                                                            onExit = {
+                                                                if (requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left && !isInFullscreen) {
+                                                                    if (tvNavigation?.railFocus?.requestFocus() == true) cancelFocusChange()
+                                                                }
+                                                            }
+                                                        }
                                                         .focusGroup()
                                                 } else {
                                                     Modifier

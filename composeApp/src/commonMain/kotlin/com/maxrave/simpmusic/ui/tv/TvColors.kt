@@ -32,10 +32,10 @@ object TvPalette {
      * white 8% fill over artwork leaves labels unreadable; with it the panel has the density a
      * blurred pane has.
      */
-    val GlassBase = Color(0xD10E0E11) // Background at 82%
+    val GlassBase = Color(0xA60E0E11) // Smoked backing at 65%
 
-    val FocusFill = Color(0xFFF5F5F7)
-    val OnFocus = Color(0xFF0E0E11)
+    val FocusFill = Color(0x30FFFFFF)
+    val OnFocus = TextPrimary
 
     /** The end of a scrim gradient; the other end is transparent. */
     val Scrim = Color(0xD9000000) // black 85%

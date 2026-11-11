@@ -50,12 +50,12 @@ fun MoodScreen(
                 )
             },
             leftIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
+                if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { IconButton(onClick = { navController.navigateUp() }) {
                     Icon(
                         SimpIcons.ArrowBackIosNew,
                         contentDescription = "Back",
                     )
-                }
+                } }
             },
         )
         AnimatedVisibility(visible = !loading) {

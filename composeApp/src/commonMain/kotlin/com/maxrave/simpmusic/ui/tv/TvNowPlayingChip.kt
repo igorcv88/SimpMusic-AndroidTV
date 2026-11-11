@@ -94,10 +94,10 @@ fun TvNowPlayingChip(
                 modifier =
                     Modifier
                         .size(ARTWORK_SIZE)
-                        .clip(CircleShape),
+                        .clip(TvShapes.Small),
             )
             if (controller.isPlaying) {
-                PlayingIndicator(Modifier.size(ARTWORK_SIZE).clip(CircleShape))
+                PlayingIndicator(Modifier.size(ARTWORK_SIZE).clip(TvShapes.Small))
             } else {
                 Icon(
                     imageVector = SimpIcons.PlayArrow,
@@ -106,7 +106,7 @@ fun TvNowPlayingChip(
                     modifier =
                         Modifier
                             .size(ARTWORK_SIZE)
-                            .clip(CircleShape)
+                            .clip(TvShapes.Small)
                             .background(Color.Black.copy(alpha = 0.45f))
                             .padding(8.dp),
                 )
@@ -176,4 +176,4 @@ private fun PlayingIndicator(modifier: Modifier = Modifier) {
 private const val INDICATOR_PERIOD_MS = 900
 
 private val ARTWORK_SIZE = 40.dp
-private val TEXT_MAX_WIDTH = 240.dp
+private val TEXT_MAX_WIDTH = 168.dp

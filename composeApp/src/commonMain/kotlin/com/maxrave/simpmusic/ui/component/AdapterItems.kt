@@ -122,6 +122,8 @@ import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.ui.tv.ProvideTvRowScrolling
 import com.maxrave.simpmusic.ui.tv.TvDimens
 import com.maxrave.simpmusic.ui.tv.TvPalette
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
+import com.maxrave.simpmusic.ui.tv.tvFocus
 import com.maxrave.simpmusic.ui.tv.TvShapes
 import com.maxrave.simpmusic.ui.tv.rememberTvHomeCard
 import com.maxrave.simpmusic.ui.tv.tvFocusGlowAnchor
@@ -498,6 +500,8 @@ internal fun BoxScope.HoverPlayButton(
     visible: Boolean,
     onClick: () -> Unit,
 ) {
+    // A TV card already owns the OK action; a second focus target over the artwork obscures it.
+    if (LocalTvDevice.current) return
     val progress by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = tween(200),
@@ -873,8 +877,9 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
+                .tvFocus(TvFocusStyle.Row, TvShapes.Small)
                 .focusable(!LocalTvDevice.current)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(if (LocalTvDevice.current) TvShapes.Small else RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
@@ -903,7 +908,7 @@ fun QuickPicksItem(
                         .align(Alignment.CenterVertically)
                         .size(44.dp)
                         .clip(
-                            RoundedCornerShape(10),
+                            if (LocalTvDevice.current) TvShapes.Small else RoundedCornerShape(10),
                         ),
             )
             Column(

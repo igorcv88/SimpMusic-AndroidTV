@@ -15,11 +15,13 @@ fun NavGraphBuilder.libraryScreenGraph(
     navController: NavController,
 ) {
     composable<LibraryDynamicPlaylistDestination> { entry ->
-        val data = entry.toRoute<LibraryDynamicPlaylistDestination>()
-        LibraryDynamicPlaylistScreen(
-            innerPadding = innerPadding,
-            navController = navController,
-            type = data.type,
-        )
+        com.maxrave.simpmusic.ui.tv.TvDestination(entry.id) {
+            val data = entry.toRoute<LibraryDynamicPlaylistDestination>()
+            LibraryDynamicPlaylistScreen(
+                innerPadding = innerPadding,
+                navController = navController,
+                type = data.type,
+            )
+        }
     }
 }
