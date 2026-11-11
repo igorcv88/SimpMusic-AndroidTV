@@ -4,6 +4,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -15,6 +16,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvTypography
 import org.jetbrains.compose.resources.Font
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.poppins_medium
@@ -160,5 +163,7 @@ fun typo(
                 ),
             // ...
         )
-    return typo
+    // TV reads at 3 m: the same styles on the TV type scale. Only sizes, line heights and tracking
+    // change, so the colours and the right-to-left handling above carry over.
+    return if (LocalTvDevice.current) remember(typo) { tvTypography(typo) } else typo
 }
