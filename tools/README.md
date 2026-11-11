@@ -119,6 +119,12 @@ names.
 
 Measure before and after a change on the same TV, with the same build type and nothing else running:
 
+Key latency requires an injected-key timestamp from the device input log. If that timestamp is
+missing or outside the measurement window, `bench.py` discards the sample: the earlier graphics
+reset includes ADB and `input` startup time and can also match an unrelated frame. On the Philips
+API 30 TV tested for P2-A, the log did not provide these timestamps, so latency and key-based jank
+remain unavailable until a reliable device-side source is found.
+
 ```bash
 tools/venv/bin/python -I tools/bench.py --out-dir work/bench-before        # on the old build
 tools/venv/bin/python -I tools/trace.py cold --runs 5 --out traces/before

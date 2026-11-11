@@ -247,8 +247,8 @@ def key_event_time(tv, keycode, binary=None):
     """
     # Some TVs never log injected keys (a TCL C755 on Google TV 14 doesn't), and reading the log costs
     # seconds there: its main buffer holds about 100 MB. After KEY_LOG_PROBES keys without a line, stop
-    # reading it; measure_key then times the key from just before it was sent, as it always did when
-    # the line was missing. Only the newest lines are read, filtered on the TV.
+    # reading it. Without an event timestamp, latency cannot be measured reliably. Only the newest
+    # lines are read, filtered on the TV.
     state = vars(tv).setdefault("_key_log", {"seen": False, "misses": 0})
     if not state["seen"] and state["misses"] >= KEY_LOG_PROBES:
         return None
@@ -295,10 +295,9 @@ def measure_key(tv, keycode, binary=None, package=DEFAULT_PACKAGE):
     # The log line is only trusted when it falls inside the window between the reset (before the
     # key) and the dump (after it). A line left over from an earlier key is outside the window
     # and would give a latency of seconds.
-    if t0 is None or (t_before is not None and t0 < t_before) \
-            or (t_after is not None and t0 > t_after):
-        t0 = t_before
-    if t0 is None:
+    # The reset timestamp predates starting the Android input process. Its startup and ADB transport
+    # delay cannot be separated from app latency, and unrelated frames can fall in that gap.
+    if t0 is None or t_before is None or t_after is None or t0 < t_before or t0 > t_after:
         return None
     rows = frame_rows(stats)
     threshold = t0 * 1_000_000
