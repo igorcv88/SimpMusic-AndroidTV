@@ -160,8 +160,10 @@ fun App(
     onOpenDesktopNotificationSettings: (doNotShowAgain: Boolean) -> Unit = {},
 ) {
     val tvNavigation = remember { com.maxrave.simpmusic.ui.tv.TvNavigationState() }
+    val tvScene = remember { com.maxrave.simpmusic.ui.tv.TvScene() }
     CompositionLocalProvider(
         com.maxrave.simpmusic.ui.tv.LocalTvNavigation provides tvNavigation,
+        com.maxrave.simpmusic.ui.tv.LocalTvScene provides tvScene,
         com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice(),
         // Springs and fades for the TV design; a system animator scale of 0 turns them into snaps.
         com.maxrave.simpmusic.ui.tv.LocalTvMotion provides

@@ -127,10 +127,13 @@ private fun AmbientPicture(
                 .crossfade(fadeMs)
                 .build()
         }
+    val scene = LocalTvScene.current
     AsyncImage(
         model = request,
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
+        // The same blurred bitmap becomes the body of every glass surface (TvSceneGlass).
+        onSuccess = { state -> scene?.let { state.result.image.publishTo(it) } },
         filterQuality = FilterQuality.High,
         alpha = AMBIENT_ALPHA,
         modifier = modifier,

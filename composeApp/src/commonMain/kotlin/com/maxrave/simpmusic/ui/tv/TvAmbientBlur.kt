@@ -43,3 +43,24 @@ internal fun blurAmbientPixels(pixels: IntArray, width: Int, height: Int, radius
     }
     return result
 }
+
+/** Hands a decoded ambient picture to [scene]. Platforms without a bitmap view of it publish nothing. */
+internal expect fun coil3.Image.publishTo(scene: TvScene)
+
+/** Mean relative luminance of ARGB [pixels], 0..1, sampled every [step] pixels. */
+internal fun meanLuminance(
+    pixels: IntArray,
+    step: Int = 1,
+): Float {
+    if (pixels.isEmpty()) return 0f
+    var sum = 0.0
+    var count = 0
+    var i = 0
+    while (i < pixels.size) {
+        val p = pixels[i]
+        sum += 0.2126 * ((p ushr 16) and 255) + 0.7152 * ((p ushr 8) and 255) + 0.0722 * (p and 255)
+        count++
+        i += step.coerceAtLeast(1)
+    }
+    return (sum / count / 255.0).toFloat()
+}

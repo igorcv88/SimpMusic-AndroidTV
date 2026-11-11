@@ -42,12 +42,24 @@ Always pass `-s 192.168.1.64:5555`. Do not uninstall or clear data: the app hold
 
 14. No back arrows anywhere on TV (Search, playlist, album, artist, settings, player).
 15. No refresh indicator when moving through Mix, Home, Library or Search.
-16. Focus is a translucent squircle with a thin light rim on cards, rows, chips, buttons and the
-    rail. Only the profile avatar is round.
+16. Focus is glass: on rows, chips, buttons, the search field and rail items the focused element
+    shows the blurred Home artwork behind it (same colours as the page background, brighter), a
+    faint gloss under its top edge and a thin rim that is bright on top and fades down the sides.
+    Cards keep their artwork and gain the rim plus a soft halo. Only the profile avatar is round.
+    Before any artwork has loaded (fresh start, nothing focused yet) focus is a plain translucent
+    white fill with the same rim.
+16a. White titles stay readable on focused glass over a very bright cover (white or yellow
+    artwork) and over a very dark one. The glass is darkened by rule to keep 4.5:1; check it by eye.
+16b. Move focus quickly down a long playlist: the glass must stay still relative to the screen
+    (the picture inside it does not slide with the row) and scrolling must not stutter.
 17. Focused cards in Listen Again, Home rows and Mix do not cover their neighbours or titles.
 18. Home background: a smooth blur of the focused artwork, no visible blocks, no second copy of
     the artwork at the top right.
-19. Rail open: translucent panel, readable labels, no white pill.
+19. Rail closed: icons sit directly on the page, no separate dark column. Rail open: one floating
+    glass sheet with rounded squircle corners, 8 dp in from the screen edges, tinted by the Home
+    artwork; the page beside it dims. The focused item is brighter glass; the current tab that is
+    not focused keeps a faint fill and the accent dot. No white pill.
+19a. Search field at rest is a faint translucent well with no blue outline; focused it is glass.
 20. Now Playing chip with a long title stays inside its width and clear of the other header
     controls.
 21. Mood chips move left and right without lag; the selected chip and the focused chip look
@@ -69,6 +81,11 @@ picture does not drift, and focus is still clearly visible. The app observes the
 restart is needed.
 
 ## Known limits
+
+- Glass is drawn from the ambient picture Home publishes (one 256 x 256 bitmap, already blurred),
+  clipped to each surface. Nothing is blurred or captured per surface, so API 30 draws the same
+  material as newer versions. The scene is the artwork last focused on Home; other screens reuse
+  it and do not sample their own content. Its cost on the Philips has not been measured.
 
 - The ambient blur is a CPU box blur (three passes, radius 18) on a 256 x 256 decode, run by Coil
   off the main thread and cached per artwork. It does not use `RenderEffect`, so API 30 and newer

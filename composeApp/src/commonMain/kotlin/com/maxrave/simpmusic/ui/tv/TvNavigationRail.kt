@@ -280,7 +280,15 @@ private fun RailMaterial(
             .fillMaxSize()
             .drawBehind {
                 val progress = expansion.value.coerceIn(0f, 1f)
-                val reveal = lerp(TvDimens.RailCollapsed.toPx(), size.width, progress)
+                // Closed: the strip is the page itself, so the icons sit on the app, not on a bar.
+                val strip = TvDimens.RailCollapsed.toPx()
+                drawRect(
+                    TvPalette.Background,
+                    topLeft = Offset(if (rtl) size.width - strip else 0f, 0f),
+                    size = Size(strip, size.height),
+                )
+                // Open: the content beside the panel dims and falls away, so the panel is the one
+                // thing in focus and nothing behind it competes with its labels.
                 if (progress > 0f) {
                     val reach = size.width + RAIL_SCRIM_FADE.toPx()
                     val panelStop = size.width / reach
@@ -301,23 +309,18 @@ private fun RailMaterial(
                         )
                     }
                 }
-                drawRect(
-                    TvPalette.Surface1,
-                    topLeft = Offset(if (rtl) size.width - reveal else 0f, 0f),
-                    size = Size(reveal, size.height),
-                )
             },
     ) {
-        // Glass only while open, and only where the device can blur: it is the one part that
-        // samples the content, and nothing reads it at rest. It is a sibling of the focusable
-        // column, so composing it in and out cannot disturb focus.
-        if (open && backdrop != null) {
+        // The panel: one floating sheet of scene glass, inset from the screen edges. It only fades
+        // (a layer alpha), so opening the rail measures and lays out nothing. It is a sibling of
+        // the focusable column, so composing it in and out cannot disturb focus.
+        if (open || expansion.value > 0.001f) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .revealClip(expansion, rtl)
                     .graphicsLayer { alpha = expansion.value.coerceIn(0f, 1f) }
-                    .tvGlass(backdrop = backdrop, shape = RectangleShape, elevated = false),
+                    .padding(RAIL_PANEL_INSET)
+                    .tvSceneGlass(shape = TvShapes.Panel, elevated = true),
             )
         }
     }
@@ -376,7 +379,7 @@ private fun RailItem(
             .height(TvDimens.RailItemHeight)
             .focusRequester(requester)
             .tvFocus(TvFocusStyle.Control)
-            .controlFill(focused = focused, restFill = Color.Transparent)
+            .controlFill(focused = focused, restFill = if (selected) TvPalette.GlassFill else Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null, role = Role.Tab, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -388,7 +391,7 @@ private fun RailItem(
                 .drawBehind {
                     if (selected) {
                         drawCircle(
-                            color = if (focused) TvPalette.OnFocus else accent,
+                            color = accent,
                             radius = TvDimens.RailIndicator.toPx() / 2f,
                         )
                     }
@@ -426,7 +429,8 @@ private fun Modifier.revealClip(
     }
 
 private const val SETTINGS_KEY = -1
-private const val RAIL_SCRIM_DENSITY = 0.94f
+private const val RAIL_SCRIM_DENSITY = 0.62f
+private val RAIL_PANEL_INSET = 8.dp
 private val RAIL_SCRIM_FADE = 160.dp
 private val RAIL_ITEM_INSET = 12.dp
 private val RAIL_ITEM_GAP = 8.dp

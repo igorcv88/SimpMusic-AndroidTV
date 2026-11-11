@@ -1162,6 +1162,21 @@ fun SearchScreen(
                 placeholder = { Text(placeholderTexts[0], style = typo().labelMedium) },
                 leadingIcon = { Icon(SimpIcons.Search, contentDescription = null) },
                 shape = com.maxrave.simpmusic.ui.tv.TvShapes.Control,
+                // A quiet glass well at rest; focus is the scene glass tvTextInput draws under it,
+                // so the Material outline (the theme's blue) would only double the rim.
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = com.maxrave.simpmusic.ui.tv.TvPalette.GlassFill,
+                    cursorColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
+                    focusedTextColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
+                    unfocusedTextColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
+                    focusedPlaceholderColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
+                    unfocusedPlaceholderColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
+                    focusedLeadingIconColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
+                    unfocusedLeadingIconColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
+                ),
             )
         } else
         // Search Bar with Animated Placeholder

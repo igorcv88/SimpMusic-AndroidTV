@@ -145,9 +145,10 @@ internal fun Modifier.controlFill(
     pressed: Boolean = false,
 ): Modifier =
     drawBehind {
+        // Focus is the scene glass drawn by tvFocus underneath; a fill here would cover it.
         val fill = when {
             pressed -> Color.White.copy(alpha = 0.1f)
-            focused -> TvPalette.FocusFill
+            focused -> Color.Transparent
             else -> restFill
         }
         if (fill.alpha > 0f) {

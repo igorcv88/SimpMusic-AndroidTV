@@ -50,27 +50,7 @@ expect fun tvGlassTier(): TvGlassTier
 fun Modifier.tvGlass(
     shape: Shape = TvShapes.Panel,
     elevated: Boolean = true,
-): Modifier =
-    drawWithCache {
-        val outline = shape.createOutline(size, layoutDirection, this)
-        val rimWidth = 1.dp.toPx()
-        val rim = Stroke(rimWidth)
-        val rimBrush = Brush.verticalGradient(listOf(TvPalette.GlassRim, Color.Transparent), startY = 0f, endY = size.height)
-        val shadowRing = Stroke(TvDimens.GlassShadow.toPx() / GLASS_SHADOW_RINGS)
-        val corner =
-            when (outline) {
-                is Outline.Rounded -> outline.roundRect.topLeftCornerRadius.x
-                else -> 0f
-            }
-        val bounds = Rect(Offset.Zero, size)
-        onDrawBehind {
-            if (elevated) {
-                drawSoftHalo(bounds, corner, Color.Black, GLASS_SHADOW_ALPHA, shadowRing, dropPx = GLASS_SHADOW_DROP.toPx())
-            }
-            drawOutline(outline, TvPalette.GlassBase)
-            drawGlassSurface(outline, rimBrush, rim)
-        }
-    }
+): Modifier = tvSceneGlass(shape, elevated)
 
 /**
  * TV glass over a recorded [backdrop], by what the device can do:

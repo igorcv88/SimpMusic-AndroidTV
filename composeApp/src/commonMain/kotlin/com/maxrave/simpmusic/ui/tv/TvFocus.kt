@@ -31,7 +31,10 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.GlobalPositionAwareModifierNode
+import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.LayoutAwareModifierNode
 import androidx.compose.ui.node.LayoutModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
@@ -54,11 +57,10 @@ import kotlin.math.max
  * elevation and a fine translucent rim aligned with the content.
  *
  * - [Card]: artwork cards. Scale 1.025 and a 24 dp glow in the artwork's tint.
- * - [Control]: buttons, chips, rail and top-bar items. Scale 1.015; the fill and content colours are
- *   swapped by the control itself (see `TvButtons.kt`), so nothing is drawn here.
- * - [Row]: list rows. Scale 1.008 and a `Surface2` backing in the row's shape.
- * - [Backing]: P1 call sites not yet migrated (`tvFocusIndicator()`). Scale 1.015 and a `Surface2`
- *   backing.
+ * - [Control]: buttons, chips, rail and top-bar items. Scale 1.015 and the scene glass (see
+ *   `TvSceneGlass.kt`) in the control's shape; the control keeps only its rest fill.
+ * - [Row]: list rows. Scale 1.008 and the scene glass in the row's shape.
+ * - [Backing]: call sites that name no style (`tvFocusIndicator()`). Scale 1.015 and the scene glass.
  */
 enum class TvFocusStyle { Card, Control, Row, Backing }
 
@@ -294,8 +296,19 @@ private class TvFocusDrawNode(
     var glow: Color?,
 ) : Modifier.Node(),
     DrawModifierNode,
+    GlobalPositionAwareModifierNode,
+    CompositionLocalConsumerModifierNode,
     TraversableNode {
     override val traverseKey: Any = TvFocusDrawKey
+
+    private val glass = TvGlassCache()
+    private val rim = TvGlassCache()
+    private val placement = TvGlassPlacement()
+
+    // Only a showing focus surface is redrawn when it moves; the rest draw nothing.
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        if (placement.update(coordinates) && state.shownProgress() > 0.001f) invalidateDraw()
+    }
 
     private var outline: Outline? = null
     private var outlineSize = Size.Unspecified
@@ -326,26 +339,31 @@ private class TvFocusDrawNode(
                     drawGlow(progress)
                 }
 
-                TvFocusStyle.Row, TvFocusStyle.Backing -> {
-                    drawOutline(resolveOutline(size), TvPalette.FocusFill, alpha = progress.coerceIn(0f, 1f))
-                }
-
-                // The control swaps its own fill and content colour.
-                TvFocusStyle.Control -> {
-                    Unit
+                // The focused control, row or field gains the scene's glass in its own shape.
+                TvFocusStyle.Row, TvFocusStyle.Backing, TvFocusStyle.Control -> {
+                    drawSceneGlass(
+                        outline = resolveOutline(size),
+                        cache = glass,
+                        scene = currentValueOf(LocalTvScene),
+                        origin = placement.origin,
+                        root = placement.root,
+                        kind = TvGlassKind.Focus,
+                        alpha = progress.coerceIn(0f, 1f),
+                    )
                 }
             }
         }
         drawContent()
-        if (progress > 0.001f) {
-            val bounds = if (style == TvFocusStyle.Card) state.glowBounds ?: Rect(Offset.Zero, size) else Rect(Offset.Zero, size)
+        // A card keeps its artwork as the surface; only the specular rim is laid over it.
+        if (progress > 0.001f && style == TvFocusStyle.Card) {
+            val bounds = state.glowBounds ?: Rect(Offset.Zero, size)
+            if (bounds.isEmpty) return
+            val outline = resolveOutline(bounds.size)
+            rim.prepare(this, outline, bounds.size)
+            val edge = rim.edge ?: return
+            val stroke = rim.edgeStroke ?: return
             translate(bounds.left, bounds.top) {
-                drawOutline(
-                    resolveOutline(bounds.size),
-                    brush = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.72f), Color.White.copy(alpha = 0.18f))),
-                    alpha = progress.coerceIn(0f, 1f),
-                    style = Stroke(1.dp.toPx()),
-                )
+                drawOutline(outline, brush = edge, alpha = progress.coerceIn(0f, 1f), style = stroke)
             }
         }
     }
