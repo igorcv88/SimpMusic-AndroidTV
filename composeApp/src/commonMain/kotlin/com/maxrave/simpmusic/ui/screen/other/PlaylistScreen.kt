@@ -1,5 +1,9 @@
 package com.maxrave.simpmusic.ui.screen.other
 
+import com.maxrave.simpmusic.ui.tv.rememberTvDetailFocus
+import com.maxrave.simpmusic.ui.tv.TvPalette
+import com.maxrave.simpmusic.ui.tv.TvShapes
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
@@ -190,6 +194,7 @@ fun PlaylistScreen(
     var searchBarHeightPx by remember { mutableStateOf(0) }
 
     val lazyState = rememberLazyListState()
+    val tvDetailFocus = rememberTvDetailFocus(lazyState)
     val firstItemVisible by remember {
         derivedStateOf {
             lazyState.firstVisibleItemIndex == 0
@@ -502,14 +507,16 @@ fun PlaylistScreen(
                                                             .windowInsetsPadding(WindowInsets.statusBars),
                                                     verticalAlignment = Alignment.CenterVertically,
                                                 ) {
-                                                    LiquidGlassIconButton(
-                                                        backdrop = artworkBackdrop,
-                                                        imageVector = SimpIcons.ArrowBackIosNew,
-                                                        modifier =
-                                                            Modifier
-                                                                .size(48.dp),
-                                                    ) {
-                                                        navController.navigateUp()
+                                                    if (!LocalTvDevice.current) {
+                                                        LiquidGlassIconButton(
+                                                            backdrop = artworkBackdrop,
+                                                            imageVector = SimpIcons.ArrowBackIosNew,
+                                                            modifier =
+                                                                Modifier
+                                                                    .size(48.dp),
+                                                        ) {
+                                                            navController.navigateUp()
+                                                        }
                                                     }
                                                     Spacer(Modifier.weight(1f))
                                                     Row(
@@ -676,10 +683,11 @@ fun PlaylistScreen(
                                                                 Box(
                                                                     modifier =
                                                                         Modifier
+                                                                            .then(tvDetailFocus.playModifier(filteredTrack.isNotEmpty()))
                                                                             .height(48.dp)
                                                                             .widthIn(min = 110.dp)
-                                                                            .clip(CircleShape)
-                                                                            .background(Color.White)
+                                                                            .clip(if (LocalTvDevice.current) TvShapes.Control else CircleShape)
+                                                                            .background(if (LocalTvDevice.current) TvPalette.Surface2 else Color.White)
                                                                             .clickable {
                                                                                 if (isThisPlaying) {
                                                                                     sharedViewModel.onUIEvent(UIEvent.PlayPause)
@@ -694,13 +702,13 @@ fun PlaylistScreen(
                                                                             imageVector =
                                                                                 if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                             contentDescription = null,
-                                                                            tint = Color.Black,
+                                                                            tint = if (LocalTvDevice.current) TvPalette.TextPrimary else Color.Black,
                                                                             modifier = Modifier.size(22.dp),
                                                                         )
                                                                         Spacer(modifier = Modifier.width(4.dp))
                                                                         Text(
                                                                             text = if (isThisPlaying) "Pause" else "Play",
-                                                                            color = Color.Black,
+                                                                            color = if (LocalTvDevice.current) TvPalette.TextPrimary else Color.Black,
                                                                             style = typo().labelLarge,
                                                                         )
                                                                     }
@@ -787,23 +795,25 @@ fun PlaylistScreen(
                                                 }
                                                 // Glass overlays — siblings of the source, over the strip the column reserved.
                                                 Box(Modifier.padding(start = 12.dp)) {
-                                                    LiquidGlassIconButton(
-                                                        backdrop = headerBackdrop,
-                                                        imageVector = SimpIcons.ArrowBackIosNew,
-                                                        shape = RoundedCornerShape(24.dp),
-                                                        // Same directional style as the like/⋯ pill, a touch thicker. The default
-                                                        // width of 0.5.dp becomes a ~2px stroke (HighlightModifier: ceil(width.toPx()) * 2),
-                                                        // which reads along the pill's long edge but vanishes around a 48dp circle. 1.dp
-                                                        // is the smallest step up that stays visible without looking like a border.
-                                                        highlight = Highlight(width = 1.dp),
-                                                        modifier =
-                                                            Modifier
-                                                                .align(Alignment.TopStart)
-                                                                .padding(12.dp)
-                                                                .windowInsetsPadding(WindowInsets.statusBars)
-                                                                .size(48.dp),
-                                                    ) {
-                                                        navController.navigateUp()
+                                                    if (!LocalTvDevice.current) {
+                                                        LiquidGlassIconButton(
+                                                            backdrop = headerBackdrop,
+                                                            imageVector = SimpIcons.ArrowBackIosNew,
+                                                            shape = RoundedCornerShape(24.dp),
+                                                            // Same directional style as the like/⋯ pill, a touch thicker. The default
+                                                            // width of 0.5.dp becomes a ~2px stroke (HighlightModifier: ceil(width.toPx()) * 2),
+                                                            // which reads along the pill's long edge but vanishes around a 48dp circle. 1.dp
+                                                            // is the smallest step up that stays visible without looking like a border.
+                                                            highlight = Highlight(width = 1.dp),
+                                                            modifier =
+                                                                Modifier
+                                                                    .align(Alignment.TopStart)
+                                                                    .padding(12.dp)
+                                                                    .windowInsetsPadding(WindowInsets.statusBars)
+                                                                    .size(48.dp),
+                                                        ) {
+                                                            navController.navigateUp()
+                                                        }
                                                     }
                                                 }
                                                 Row(
@@ -891,10 +901,11 @@ fun PlaylistScreen(
                                                         Box(
                                                             modifier =
                                                                 Modifier
+                                                                    .then(tvDetailFocus.playModifier(filteredTrack.isNotEmpty()))
                                                                     .height(48.dp)
                                                                     .widthIn(min = 110.dp)
-                                                                    .clip(CircleShape)
-                                                                    .background(Color.White)
+                                                                    .clip(if (LocalTvDevice.current) TvShapes.Control else CircleShape)
+                                                                    .background(if (LocalTvDevice.current) TvPalette.Surface2 else Color.White)
                                                                     .clickable {
                                                                         if (isThisPlaying) {
                                                                             sharedViewModel.onUIEvent(UIEvent.PlayPause)
@@ -909,13 +920,13 @@ fun PlaylistScreen(
                                                                     imageVector =
                                                                         if (isThisPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                                                     contentDescription = null,
-                                                                    tint = Color.Black,
+                                                                    tint = if (LocalTvDevice.current) TvPalette.TextPrimary else Color.Black,
                                                                     modifier = Modifier.size(22.dp),
                                                                 )
                                                                 Spacer(modifier = Modifier.width(4.dp))
                                                                 Text(
                                                                     text = if (isThisPlaying) "Pause" else "Play",
-                                                                    color = Color.Black,
+                                                                    color = if (LocalTvDevice.current) TvPalette.TextPrimary else Color.Black,
                                                                     style = typo().labelLarge,
                                                                 )
                                                             }
@@ -1076,7 +1087,7 @@ fun PlaylistScreen(
                                         isSelected = selectionState.isSelected(item.videoId),
                                         onLongClick = { selectionState.start(it) },
                                         onSelectToggle = { selectionState.toggle(it) },
-                                        modifier = Modifier,
+                                        modifier = tvDetailFocus.songModifier(index == 0),
                                     )
                                 } else {
                                     SongFullWidthItems(
@@ -1097,7 +1108,7 @@ fun PlaylistScreen(
                                         isSelected = selectionState.isSelected(item.videoId),
                                         onLongClick = { selectionState.start(it) },
                                         onSelectToggle = { selectionState.toggle(it) },
-                                        modifier = Modifier,
+                                        modifier = tvDetailFocus.songModifier(index == 0),
                                     )
                                 }
                                 if (index < filteredTrack.size - 1) {
@@ -1183,10 +1194,12 @@ fun PlaylistScreen(
                                     .windowInsetsPadding(WindowInsets.statusBars),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RippleIconButton(
-                                imageVector = SimpIcons.ArrowBackIosNew,
-                            ) {
-                                navController.navigateUp()
+                            if (!LocalTvDevice.current) {
+                                RippleIconButton(
+                                    imageVector = SimpIcons.ArrowBackIosNew,
+                                ) {
+                                    navController.navigateUp()
+                                }
                             }
                             SearchBar(
                                 modifier =
@@ -1349,13 +1362,15 @@ fun PlaylistScreen(
                         },
                         navigationIcon = {
                             Box(Modifier.padding(horizontal = 5.dp)) {
-                                RippleIconButton(
-                                    SimpIcons.ArrowBackIosNew,
-                                    Modifier
-                                        .size(32.dp),
-                                    true,
-                                ) {
-                                    navController.navigateUp()
+                                if (!LocalTvDevice.current) {
+                                    RippleIconButton(
+                                        SimpIcons.ArrowBackIosNew,
+                                        Modifier
+                                            .size(32.dp),
+                                        true,
+                                    ) {
+                                        navController.navigateUp()
+                                    }
                                 }
                             }
                         },

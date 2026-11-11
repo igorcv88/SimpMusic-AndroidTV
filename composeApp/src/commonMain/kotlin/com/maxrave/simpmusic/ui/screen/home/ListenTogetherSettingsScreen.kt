@@ -285,7 +285,7 @@ fun ListenTogetherSettingsScreen(
 
         // Floats over the strip the header row reserves — a sibling of both the scroll column and
         // the backdrop source, exactly the arrangement the main Listen Together page uses.
-        LiquidGlassIconButton(
+        if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { LiquidGlassIconButton(
             backdrop = backdrop,
             imageVector = SimpIcons.ArrowBackIosNew,
             tint = MaterialTheme.colorScheme.onSurface,
@@ -298,7 +298,7 @@ fun ListenTogetherSettingsScreen(
                     .size(48.dp),
         ) {
             navController.navigateUp()
-        }
+        } }
     }
 }
 

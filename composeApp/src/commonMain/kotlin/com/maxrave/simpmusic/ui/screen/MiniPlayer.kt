@@ -24,7 +24,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -137,6 +136,10 @@ import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.screen.player.content.toAudioQualityLabel
 import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvRemoteActions
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.delay
@@ -150,6 +153,7 @@ import simpmusic.composeapp.generated.resources.crossfading
 import simpmusic.composeapp.generated.resources.live_badge
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 private const val TAG = "MiniPlayer"
 
@@ -300,6 +304,7 @@ fun MiniPlayer(
                         Modifier
                             .clip(miniPlayerShape)
                             .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                            .tvRemoteActions(onClick = onClick, onLongClick = onClose, addFocusTarget = false)
                             .clickable(
                                 onClick = onClick,
                             ).pointerInput(Unit) {
@@ -478,7 +483,7 @@ fun MiniPlayer(
                                                     ).basicMarquee(
                                                         iterations = Int.MAX_VALUE,
                                                         animationMode = MarqueeAnimationMode.Immediately,
-                                                    ).focusable(),
+                                                    ).focusable(!LocalTvDevice.current),
                                         )
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             androidx.compose.animation.AnimatedVisibility(visible = songEntity?.isExplicit == true) {
@@ -503,7 +508,7 @@ fun MiniPlayer(
                                                         ).basicMarquee(
                                                             iterations = Int.MAX_VALUE,
                                                             animationMode = MarqueeAnimationMode.Immediately,
-                                                        ).focusable(),
+                                                        ).focusable(!LocalTvDevice.current),
                                             )
                                         }
                                     }
@@ -823,7 +828,7 @@ fun MiniPlayer(
                                         ).basicMarquee(
                                             iterations = Int.MAX_VALUE,
                                             animationMode = MarqueeAnimationMode.Immediately,
-                                        ).focusable(),
+                                        ).focusable(!LocalTvDevice.current),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 androidx.compose.animation.AnimatedVisibility(visible = songEntity?.isExplicit == true) {
@@ -981,6 +986,7 @@ fun MiniPlayer(
                         onClick = {
                             showQueueBottomSheet = true
                         },
+                        modifier = Modifier.tvFocusIndicator(),
                     ) {
                         Icon(
                             imageVector = SimpIcons.QueueMusic,
@@ -990,7 +996,7 @@ fun MiniPlayer(
                     }
                     // Desktop mini player button (JVM only)
                     if (getPlatform() == Platform.Desktop) {
-                        IconButton(onClick = { toggleMiniPlayer() }) {
+                        IconButton(onClick = { toggleMiniPlayer() }, modifier = Modifier.tvFocusIndicator()) {
                             Icon(
                                 imageVector = SimpIcons.PictureInPictureAlt,
                                 tint = textColor,
@@ -1041,6 +1047,7 @@ fun MiniPlayer(
                                     )
                                 }
                             },
+                            modifier = Modifier.tvFocusIndicator(),
                         ) {
                             Icon(
                                 imageVector =
@@ -1142,7 +1149,23 @@ fun MiniPlayer(
                                                                 layout(placeable.height, placeable.width) {
                                                                     placeable.place(-placeable.width, 0)
                                                                 }
-                                                            }.width(VOLUME_SLIDER_LENGTH),
+                                                            }.width(VOLUME_SLIDER_LENGTH)
+                                                            .tvSliderKeys(
+                                                                value = volumeValue,
+                                                                range = 0f..1f,
+                                                                step = 0.05f,
+                                                                onChange = {
+                                                                    isVolumeSliding = true
+                                                                    volumeValue = it
+                                                                },
+                                                                onFinished = {
+                                                                    isVolumeSliding = false
+                                                                    sharedViewModel.onUIEvent(
+                                                                        UIEvent.UpdateVolume(volumeValue.coerceIn(0f, 1f)),
+                                                                    )
+                                                                },
+                                                                vertical = true,
+                                                            ),
                                                     track = { sliderState ->
                                                         SliderDefaults.Track(
                                                             modifier =
@@ -1185,7 +1208,7 @@ fun MiniPlayer(
                             }
                         }
                     }
-                    IconButton(onClick = { onClose() }) {
+                    IconButton(onClick = { onClose() }, modifier = Modifier.tvFocusIndicator()) {
                         Icon(SimpIcons.Close, "", tint = textColor)
                     }
                 }
@@ -1256,7 +1279,14 @@ private fun CapsuleProgress(
                             value = sliderValue / 100f,
                             onValueChange = onValueChange,
                             onValueChangeFinished = onValueChangeFinished,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth()
+                                .tvSliderKeys(
+                                    value = sliderValue / 100f,
+                                    range = 0f..1f,
+                                    step = 0.01f,
+                                    onChange = onValueChange,
+                                    onFinished = onValueChangeFinished,
+                                ),
                             track = { sliderState ->
                                 SliderDefaults.Track(
                                     modifier = Modifier.height(trackHeight),

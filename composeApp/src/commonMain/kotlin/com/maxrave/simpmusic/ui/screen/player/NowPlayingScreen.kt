@@ -107,6 +107,7 @@ import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
 import com.maxrave.simpmusic.ui.screen.player.content.PlayerBackdropColor
 import com.maxrave.simpmusic.ui.screen.player.content.fullscreenCanvas
 import com.maxrave.simpmusic.ui.screen.player.content.toAudioQualityLabel
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.viewModel.LyricsProvider
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetUIEvent
 import com.maxrave.simpmusic.viewModel.NowPlayingBottomSheetViewModel
@@ -186,6 +187,7 @@ fun NowPlayingScreenContent(
     dismissIcon: ImageVector,
     onDismiss: () -> Unit = {},
 ) {
+    val tvDevice = LocalTvDevice.current
     val coroutineScope = rememberCoroutineScope()
 
     // ViewModel State
@@ -532,7 +534,7 @@ fun NowPlayingScreenContent(
         mutableStateOf(true)
     }
     val controlLayoutAlpha: Float by animateFloatAsState(
-        targetValue = if (showHideControlLayout) 1f else 0f,
+        targetValue = if (tvDevice || showHideControlLayout) 1f else 0f,
         animationSpec =
             tween(
                 durationMillis = 500,
@@ -653,7 +655,7 @@ fun NowPlayingScreenContent(
             sliderTrackColor = sliderTrackColor,
             sliderValue = sliderValue,
             currentLyricLineIndex = currentLyricLineIndex,
-            showControlLayout = showHideControlLayout,
+            showControlLayout = tvDevice || showHideControlLayout,
             controlLayoutAlpha = controlLayoutAlpha,
             showHideMiddleLayout = showHideMiddleLayout,
             shouldShowToolbar = shouldShowToolbar,

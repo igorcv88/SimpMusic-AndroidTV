@@ -8,8 +8,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -119,6 +117,18 @@ import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.LocalForceDarkText
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.HomeHeaderItem
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.ProvideTvRowScrolling
+import com.maxrave.simpmusic.ui.tv.TvDimens
+import com.maxrave.simpmusic.ui.tv.TvPalette
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
+import com.maxrave.simpmusic.ui.tv.tvFocus
+import com.maxrave.simpmusic.ui.tv.TvShapes
+import com.maxrave.simpmusic.ui.tv.rememberTvHomeCard
+import com.maxrave.simpmusic.ui.tv.tvFocusGlowAnchor
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.viewModel.HomeViewModel
 import com.maxrave.simpmusic.viewModel.base.BaseViewModel
 import org.jetbrains.compose.resources.painterResource
@@ -136,6 +146,8 @@ import simpmusic.composeapp.generated.resources.radio
 import simpmusic.composeapp.generated.resources.subscribers
 import simpmusic.composeapp.generated.resources.wrapped_recap_subtitle
 import simpmusic.composeapp.generated.resources.you
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
+import com.maxrave.simpmusic.ui.tv.tvCombinedClickable as combinedClickable
 
 @Composable
 fun HomeItem(
@@ -158,24 +170,35 @@ fun HomeItem(
         )
     }
 
+    // TV: the row runs edge to edge and its cards stop on the start keyline (Leanback style). The
+    // inset is the content padding, not a padding around the row: a row inset from outside clips at
+    // its own edge, and the focused card at the keyline grows past that edge. The keyline is the
+    // safe area minus the card's own inset, which puts the ARTWORK on the 48dp line.
+    val tvDevice = LocalTvDevice.current
+    val tvRowInset = TvDimens.SafeHorizontal - TvDimens.CardInset
     Column {
-        HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
-        LazyRow(
-            modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior),
-            state = lazyListState,
-            flingBehavior = snapperFlingBehavior,
-        ) {
-            items(data.contents) { temp ->
-                if (temp != null) {
-                    HomeContentCard(
-                        temp = temp,
-                        navController = navController,
-                        viewModel = homeViewModel,
-                        onLongClick = {
-                            track = it.toTrack()
-                            bottomSheetShow = true
-                        },
-                    )
+        Box(if (tvDevice) Modifier.padding(horizontal = TvDimens.SafeHorizontal) else Modifier) {
+            HomeSectionHeader(data = data, navController = navController, onPlayAll = { homeViewModel.playAll(data) })
+        }
+        ProvideTvRowScrolling(keyline = tvRowInset) {
+            LazyRow(
+                modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior).tvFocusRestorer(),
+                state = lazyListState,
+                flingBehavior = snapperFlingBehavior,
+                contentPadding = if (tvDevice) PaddingValues(horizontal = tvRowInset) else PaddingValues(0.dp),
+            ) {
+                items(data.contents) { temp ->
+                    if (temp != null) {
+                        HomeContentCard(
+                            temp = temp,
+                            navController = navController,
+                            viewModel = homeViewModel,
+                            onLongClick = {
+                                track = it.toTrack()
+                                bottomSheetShow = true
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -209,7 +232,7 @@ fun HomeSectionHeader(
         modifier =
             if (channelId != null) {
                 Modifier
-                    .focusable(true)
+                    .focusable(!LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
                         navController.navigate(
@@ -221,7 +244,7 @@ fun HomeSectionHeader(
             } else if (moreEndpoint != null) {
                 // The section title carries the same endpoint as its "More" button, as on the web.
                 Modifier
-                    .focusable(true)
+                    .focusable(!LocalTvDevice.current)
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
             } else {
@@ -268,7 +291,16 @@ fun HomeSectionHeader(
             }
             Text(
                 text = data.title,
-                style = typo().headlineMedium,
+                // TV: section headers are headlineSmall (22sp). The app's typography defines no
+                // headlineSmall, so the face and weight are taken from the style it replaces.
+                style =
+                    if (LocalTvDevice.current) {
+                        typo().headlineMedium.let { base ->
+                            typo().headlineSmall.copy(fontFamily = base.fontFamily, fontWeight = base.fontWeight)
+                        }
+                    } else {
+                        typo().headlineMedium
+                    },
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth(),
@@ -301,7 +333,7 @@ fun SectionHeaderButton(
         TextButton(
             onClick = onClick,
             // Any non-zero minimum here keeps TextButton's own 40dp minimum height from applying.
-            modifier = Modifier.defaultMinSize(minHeight = 1.dp),
+            modifier = Modifier.defaultMinSize(minHeight = 1.dp).tvFocusIndicator(),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 2.dp),
             colors =
                 ButtonDefaults
@@ -393,6 +425,20 @@ fun HomeContentCard(
 }
 
 /**
+ * What Home's immersive header shows for this card on TV: its title, the line under it and its
+ * largest artwork. The id only has to tell cards apart, so any of the card's own ids will do.
+ */
+internal fun Content.tvHeaderItem(): HomeHeaderItem =
+    HomeHeaderItem(
+        id = videoId?.takeIf { it.isNotEmpty() } ?: playlistId ?: browseId ?: title,
+        title = title,
+        subtitle =
+            description?.takeIf { it.isNotBlank() }
+                ?: artists.toListName().connectArtists(),
+        artworkUrl = thumbnails.lastOrNull()?.url,
+    )
+
+/**
  * The card's hover play button. A song or video plays exactly as a tap on the card does, so every
  * one of them gets it. A playlist or album plays what YouTube's own play button points at, straight
  * from Home; a playlist card that came without one still plays by its id. Artists and podcasts,
@@ -454,6 +500,8 @@ internal fun BoxScope.HoverPlayButton(
     visible: Boolean,
     onClick: () -> Unit,
 ) {
+    // A TV card already owns the OK action; a second focus target over the artwork obscures it.
+    if (LocalTvDevice.current) return
     val progress by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
         animationSpec = tween(200),
@@ -552,14 +600,22 @@ fun HomeItemContentPlaylist(
     // Home's hover play button; null leaves the card exactly as it was.
     onPlay: (() -> Unit)? = null,
 ) {
-    val titleColor = if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
+    // TV: the card size, the `Card` focus style and the immersive header's source. A caller that
+    // asked for a size of its own keeps it.
+    val tvDevice = LocalTvDevice.current
+    val (tvCard, tvFocused) = rememberTvHomeCard { (data as? Content)?.tvHeaderItem() }
+    @Suppress("NAME_SHADOWING")
+    val thumbSize = if (tvDevice && thumbSize == 160.dp) TvDimens.SquareCard else thumbSize
+    val titleColor =
+        if (tvDevice) (if (tvFocused) TvPalette.TextPrimary else TvPalette.TextSecondary) else if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
     val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(thumbSize)
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         Modifier
+            .then(tvCard)
             .then(hoverModifier)
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -599,7 +655,7 @@ fun HomeItemContentPlaylist(
                     is MonthlyRecapItem -> null
                     else -> null
                 }
-            Box {
+            Box(Modifier.tvFocusGlowAnchor()) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -681,8 +737,8 @@ fun HomeItemContentPlaylist(
                         (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.size(thumbSize))
                             .aspectRatio(1f)
                             .clip(
-                                RoundedCornerShape(10.dp),
-                            ).hoverZoom(hovered),
+                                if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
+                            ).hoverZoom(hovered && !tvDevice),
                 )
                 if (onPlay != null) HoverPlayButton(visible = hovered, onClick = onPlay)
             }
@@ -821,8 +877,9 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
-                .focusable(true)
-                .clip(RoundedCornerShape(8.dp))
+                .tvFocus(TvFocusStyle.Row, TvShapes.Small)
+                .focusable(!LocalTvDevice.current)
+                .clip(if (LocalTvDevice.current) TvShapes.Small else RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
@@ -851,7 +908,7 @@ fun QuickPicksItem(
                         .align(Alignment.CenterVertically)
                         .size(44.dp)
                         .clip(
-                            RoundedCornerShape(10),
+                            if (LocalTvDevice.current) TvShapes.Small else RoundedCornerShape(10),
                         ),
             )
             Column(
@@ -885,7 +942,7 @@ fun QuickPicksItem(
                 )
                 val subtitleRowState = rememberLazyListState()
                 LazyRow(
-                    modifier = Modifier.mouseDragScroll(subtitleRowState),
+                    modifier = Modifier.mouseDragScroll(subtitleRowState).tvFocusRestorer(),
                     state = subtitleRowState,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -938,14 +995,18 @@ fun HomeItemSong(
     // Home's hover play button; null leaves the card exactly as it was.
     onPlay: (() -> Unit)? = null,
 ) {
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(160.dp)
+    val tvDevice = LocalTvDevice.current
+    val (tvCard, tvFocused) = rememberTvHomeCard { data.tvHeaderItem() }
+    val artSize = if (tvDevice) TvDimens.SquareCard else 160.dp
+    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(artSize)
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         modifier =
             Modifier
+                .then(tvCard)
                 .then(hoverModifier)
                 .fillMaxSize()
-                .focusable(true)
+                .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
                     onClick = onClick,
@@ -956,7 +1017,7 @@ fun HomeItemSong(
             modifier =
                 Modifier
                     .padding(start = 10.dp, top = 10.dp, end = 10.dp, bottom = 6.dp)
-                    .heightIn(min = 230.dp),
+                    .heightIn(min = if (tvDevice) artSize + 70.dp else 230.dp),
         ) {
             val thumb =
                 data.thumbnails.lastOrNull()?.url?.let {
@@ -966,7 +1027,7 @@ fun HomeItemSong(
                         it
                     }
                 }
-            Box(Modifier.align(Alignment.CenterHorizontally)) {
+            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -982,17 +1043,17 @@ fun HomeItemSong(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(160.dp))
+                            .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(artSize))
                             .clip(
-                                RoundedCornerShape(10.dp),
-                            ).hoverZoom(hovered),
+                                if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
+                            ).hoverZoom(hovered && !tvDevice),
                 )
                 if (onPlay != null) HoverPlayButton(visible = hovered, onClick = onPlay)
             }
             Text(
                 text = data.title,
                 style = typo().titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (tvDevice) (if (tvFocused) TvPalette.TextPrimary else TvPalette.TextSecondary) else MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier =
@@ -1049,14 +1110,23 @@ fun HomeItemVideo(
     // Home's hover play button; null leaves the card exactly as it was.
     onPlay: (() -> Unit)? = null,
 ) {
-    val titleColor = if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(284.5.dp)
+    val tvDevice = LocalTvDevice.current
+    val (tvCard, tvFocused) = rememberTvHomeCard { data.tvHeaderItem() }
+    val titleColor =
+        if (tvDevice) (if (tvFocused) TvPalette.TextPrimary else TvPalette.TextSecondary) else if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
+    val textWidth =
+        when {
+            fillMaxWidth -> Modifier.fillMaxWidth()
+            tvDevice -> Modifier.width(TvDimens.WideCardWidth)
+            else -> Modifier.width(284.5.dp)
+        }
     val (hoverModifier, hovered) = rememberCardHover(enabled = onPlay != null)
     Box(
         Modifier
+            .then(tvCard)
             .then(hoverModifier)
             .fillMaxSize()
-            .focusable(true)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -1067,10 +1137,10 @@ fun HomeItemVideo(
             modifier =
                 Modifier
                     .padding(start = 10.dp, top = 10.dp, end = 10.dp, bottom = 6.dp)
-                    .heightIn(min = 230.dp),
+                    .heightIn(min = if (tvDevice) TvDimens.SquareCard + 70.dp else 230.dp),
         ) {
             val thumb = data.thumbnails.lastOrNull()?.url
-            Box(Modifier.align(Alignment.CenterHorizontally)) {
+            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -1086,11 +1156,16 @@ fun HomeItemVideo(
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
-                            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.height(160.dp))
-                            .aspectRatio(16f / 9f)
+                            .then(
+                                when {
+                                    fillMaxWidth -> Modifier.fillMaxWidth()
+                                    tvDevice -> Modifier.height(TvDimens.WideCardHeight)
+                                    else -> Modifier.height(160.dp)
+                                },
+                            ).aspectRatio(16f / 9f)
                             .clip(
-                                RoundedCornerShape(10.dp),
-                            ).hoverZoom(hovered),
+                                if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
+                            ).hoverZoom(hovered && !tvDevice),
                 )
                 if (onPlay != null) HoverPlayButton(visible = hovered, onClick = onPlay)
             }
@@ -1170,12 +1245,18 @@ fun HomeItemArtist(
     // Fill a grid cell instead of the fixed 160dp, as Metrolist's browse grid does.
     fillMaxWidth: Boolean = false,
 ) {
-    val titleColor = if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
-    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(160.dp)
+    val tvDevice = LocalTvDevice.current
+    // The artwork is a circle, so the glow is one too.
+    val (tvCard, tvFocused) = rememberTvHomeCard(shape = CircleShape) { data.tvHeaderItem() }
+    val artSize = if (tvDevice) TvDimens.ArtistCard else 160.dp
+    val titleColor =
+        if (tvDevice) (if (tvFocused) TvPalette.TextPrimary else TvPalette.TextSecondary) else if (forceDark) Color.White else MaterialTheme.colorScheme.onSurface
+    val textWidth = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.width(artSize)
     Box(
         Modifier
+            .then(tvCard)
             .fillMaxSize()
-            .focusable(true)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1185,7 +1266,7 @@ fun HomeItemArtist(
             modifier =
                 Modifier
                     .padding(start = 10.dp, top = 10.dp, end = 10.dp, bottom = 6.dp)
-                    .heightIn(min = 230.dp),
+                    .heightIn(min = if (tvDevice) artSize + 70.dp else 230.dp),
         ) {
             val thumb = data.thumbnails.lastOrNull()?.url
             AsyncImage(
@@ -1204,7 +1285,8 @@ fun HomeItemArtist(
                 modifier =
                     Modifier
                         .align(Alignment.CenterHorizontally)
-                        .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(160.dp))
+                        .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(artSize))
+                        .tvFocusGlowAnchor()
                         .clip(
                             CircleShape,
                         ),
@@ -1294,7 +1376,7 @@ fun ItemVideoChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1394,7 +1476,7 @@ fun ItemArtistChart(
     Box(
         Modifier
             .wrapContentSize()
-            .focusable(true)
+            .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .clickable {
                 onClick()
@@ -1495,7 +1577,7 @@ fun ItemTrackChart(
         modifier =
             Modifier
                 .wrapContentSize()
-                .focusable(true)
+                .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable {
                     onClick()
@@ -1622,7 +1704,8 @@ fun MoodAndGenresContentItem(
                 Modifier
                     .padding(
                         10.dp,
-                    ).mouseDragScroll(rowState),
+                    ).mouseDragScroll(rowState)
+                    .tvFocusRestorer(),
             state = rowState,
         ) {
             val itemList =

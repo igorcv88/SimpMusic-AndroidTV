@@ -39,6 +39,11 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -107,6 +112,10 @@ import com.maxrave.simpmusic.ui.theme.desktopWindowLight
 import com.maxrave.simpmusic.ui.theme.fontFamily
 import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvGlassTier
+import com.maxrave.simpmusic.ui.tv.TvNavigationRail
+import com.maxrave.simpmusic.ui.tv.tvGlassTier
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.isAppLinkAvailable
 import com.maxrave.simpmusic.utils.libraryTabOf
@@ -143,9 +152,31 @@ import simpmusic.composeapp.generated.resources.update_message
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class, ExperimentalFoundationApi::class)
 @Composable
 fun App(
+    viewModel: SharedViewModel = koinInject(),
+    showDesktopNotificationPermissionDialog: Boolean = false,
+    onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
+    onOpenDesktopNotificationSettings: (doNotShowAgain: Boolean) -> Unit = {},
+) {
+    val tvNavigation = remember { com.maxrave.simpmusic.ui.tv.TvNavigationState() }
+    val tvScene = remember { com.maxrave.simpmusic.ui.tv.TvScene() }
+    CompositionLocalProvider(
+        com.maxrave.simpmusic.ui.tv.LocalTvNavigation provides tvNavigation,
+        com.maxrave.simpmusic.ui.tv.LocalTvScene provides tvScene,
+        com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice(),
+        // Springs and fades for the TV design; a system animator scale of 0 turns them into snaps.
+        com.maxrave.simpmusic.ui.tv.LocalTvMotion provides
+            com.maxrave.simpmusic.ui.tv.resolveTvMotion(com.maxrave.simpmusic.ui.tv.rememberSystemAnimatorScale()),
+    ) {
+        AppContent(viewModel, showDesktopNotificationPermissionDialog,
+            onDismissDesktopNotificationPermissionDialog, onOpenDesktopNotificationSettings)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class, ExperimentalFoundationApi::class)
+@Composable
+private fun AppContent(
     viewModel: SharedViewModel = koinInject(),
     showDesktopNotificationPermissionDialog: Boolean = false,
     onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
@@ -194,6 +225,23 @@ fun App(
     // Now playing screen
     var isShowNowPlaylistScreen by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    // On a TV the player is the fullscreen one: Now Playing opens it instead of the side panel or
+    // the sheet, and Home's top bar carries the mini player (TvNowPlayingChip).
+    val tvDevice = LocalTvDevice.current
+    LaunchedEffect(tvDevice, navController) {
+        com.maxrave.simpmusic.ui.tv.TvPlaybackRequests.events.collect {
+            if (tvDevice && navController.currentDestination?.hasRoute(FullscreenDestination::class) != true) {
+                navController.navigate(FullscreenDestination) { launchSingleTop = true }
+            }
+        }
+    }
+    LaunchedEffect(tvDevice, isShowNowPlaylistScreen) {
+        if (tvDevice && isShowNowPlaylistScreen) {
+            isShowNowPlaylistScreen = false
+            navController.navigate(FullscreenDestination)
+        }
     }
 
     // Fullscreen
@@ -509,8 +557,14 @@ fun App(
     val isTablet = windowSize.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
+    // TV: the content area's focus entry point. The rail sends focus here when the user leaves it
+    // toward the content or presses Back, and the area restores its last focused element.
+    val tvContentFocus = remember { FocusRequester() }
+    val tvNavigation = com.maxrave.simpmusic.ui.tv.LocalTvNavigation.current
+
     AppTheme(
-        themeMode = themeMode,
+        // The TV design is dark only: its palette and contrast are defined against a dark page.
+        themeMode = if (tvDevice) DataStoreManager.THEME_MODE_DARK else themeMode,
         themeColorSource = themeColorSource,
         customThemeColor = parseThemeColorHex(customThemeColorHex),
         // The setting governs Desktop too, the same as Android: off, every glass surface draws flat.
@@ -628,7 +682,7 @@ fun App(
                 ) {
                     val tabletMiniPlayer: @Composable (Modifier) -> Unit = { modifier ->
                         androidx.compose.animation.AnimatedVisibility(
-                            visible = isShowMiniPlayer && isTablet && !isInFullscreen,
+                            visible = isShowMiniPlayer && isTablet && !isInFullscreen && !tvDevice,
                             modifier = modifier,
                             enter = fadeIn() + slideInHorizontally(),
                             exit = fadeOut(),
@@ -703,6 +757,12 @@ fun App(
                                         },
                                     ),
                             ) {
+                                // What the tablet capsule's glass samples. A TV hides that capsule; its
+                                // only reader there is the open rail, and only where the device can blur
+                                // at all, so on API 30 nothing is recorded.
+                                val recordTabletBackdrop =
+                                    isLiquidGlassEnabled == TRUE && !isDesktopShell && isTablet && !isInFullscreen &&
+                                        (!tvDevice || tvGlassTier() != TvGlassTier.Drawn)
                                 if (isTablet && !isInFullscreen) {
                                     if (isDesktopShell) {
                                         DesktopSidebar(
@@ -712,6 +772,16 @@ fun App(
                                             showMixForYouTab = showMixForYouTab,
                                             // No end padding: the content panel's own 8dp is the gap between the two.
                                             modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
+                                        ) { klass ->
+                                            viewModel.reloadDestination(klass)
+                                        }
+                                    } else if (tvDevice) {
+                                        TvNavigationRail(
+                                            navController = navController,
+                                            showAnalyticsTab = showAnalyticsTab,
+                                            showMixForYouTab = showMixForYouTab,
+                                            backdrop = backdrop.takeIf { recordTabletBackdrop },
+                                            contentFocus = tvContentFocus,
                                         ) { klass ->
                                             viewModel.reloadDestination(klass)
                                         }
@@ -750,12 +820,31 @@ fun App(
                                             .then(
                                                 // Tablets record the capsule's source here; Desktop records it on
                                                 // the Row above, which takes in the sidebar as well.
-                                                if (isLiquidGlassEnabled == TRUE && !isDesktopShell && isTablet && !isInFullscreen) {
+                                                if (recordTabletBackdrop) {
                                                     Modifier.layerBackdrop(backdrop)
                                                 } else {
                                                     Modifier
                                                 },
-                                            ).hazeSource(hazeState),
+                                            ).hazeSource(hazeState)
+                                            .then(
+                                                if (tvDevice) {
+                                                    // One group for the whole content area, so the rail has a
+                                                    // single place to hand focus back to and that place returns
+                                                    // it to the element that had it.
+                                                    Modifier
+                                                        .focusRequester(tvContentFocus)
+                                                        .focusProperties {
+                                                            onExit = {
+                                                                if (requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left && !isInFullscreen) {
+                                                                    if (tvNavigation?.railFocus?.requestFocus() == true) cancelFocusChange()
+                                                                }
+                                                            }
+                                                        }
+                                                        .focusGroup()
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
                                     ) {
                                         CompositionLocalProvider(
                                             LocalAppDialogOpen provides appDialogOpen,
@@ -789,7 +878,7 @@ fun App(
                                 tabletMiniPlayer(Modifier.padding(innerPadding).align(Alignment.BottomCenter))
                             }
                         }
-                        if (isTablet && isTabletLandscape && !isInFullscreen) {
+                        if (isTablet && isTabletLandscape && !isInFullscreen && !tvDevice) {
                             AnimatedVisibility(
                                 isShowNowPlaylistScreen,
                                 enter = expandHorizontally() + fadeIn(),
@@ -860,7 +949,7 @@ fun App(
                     }
                 }
 
-                if (isShowNowPlaylistScreen && !isTabletLandscape) {
+                if (isShowNowPlaylistScreen && !isTabletLandscape && !tvDevice) {
                     ForceDarkContent {
                         NowPlayingScreen(
                             navController = navController,

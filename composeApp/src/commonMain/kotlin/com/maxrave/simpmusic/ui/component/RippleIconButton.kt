@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.maxrave.simpmusic.ui.icon.Pause
 import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.SimpIcons
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 
 @Composable
 fun RippleIconButton(
@@ -23,7 +24,7 @@ fun RippleIconButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.tvFocusIndicator(),
     ) {
         Icon(
             imageVector,

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.maxrave.simpmusic.extension.angledGradientBackground
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocus
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
 import org.jetbrains.compose.resources.painterResource
 import simpmusic.composeapp.generated.resources.Res
 import simpmusic.composeapp.generated.resources.monochrome
@@ -50,6 +52,7 @@ fun MoodCategoryCard(
             modifier
                 .fillMaxWidth()
                 .aspectRatio(2f)
+                .tvFocus(TvFocusStyle.Card, RoundedCornerShape(10.dp))
                 .clip(RoundedCornerShape(10.dp))
                 .angledGradientBackground(
                     colors = playlistTitleGradient(title),

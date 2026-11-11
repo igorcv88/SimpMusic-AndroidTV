@@ -19,7 +19,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -119,6 +118,9 @@ import com.maxrave.simpmusic.ui.screen.player.content.expressive.ExpressiveTrans
 import com.maxrave.simpmusic.ui.screen.player.content.expressive.WavySeekBar
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvInitialFocus
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -130,6 +132,7 @@ import simpmusic.composeapp.generated.resources.comments
 import simpmusic.composeapp.generated.resources.crossfading
 import simpmusic.composeapp.generated.resources.now_playing_upper
 import simpmusic.composeapp.generated.resources.radio_mix_upper
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The Material 3 Expressive ("Tonal pills") Now Playing style.
@@ -360,7 +363,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                 containerColor = colorScheme.surfaceContainerHigh,
                                 contentColor = colorScheme.onSurface,
                             ),
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(44.dp).tvFocusIndicator().tvInitialFocus(),
                     ) {
                         Icon(
                             imageVector = state.dismissIcon,
@@ -396,7 +399,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                     .basicMarquee(
                                         iterations = Int.MAX_VALUE,
                                         animationMode = MarqueeAnimationMode.Immediately,
-                                    ).focusable(),
+                                    ).focusable(!LocalTvDevice.current),
                         )
                     }
                     IconButton(
@@ -407,7 +410,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                 containerColor = colorScheme.surfaceContainerHigh,
                                 contentColor = colorScheme.onSurface,
                             ),
-                        modifier = Modifier.size(44.dp),
+                        modifier = Modifier.size(44.dp).tvFocusIndicator(),
                     ) {
                         Icon(
                             imageVector = SimpIcons.MoreVert,
@@ -505,7 +508,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                             .basicMarquee(
                                                 iterations = Int.MAX_VALUE,
                                                 animationMode = MarqueeAnimationMode.Immediately,
-                                            ).focusable(),
+                                            ).focusable(!LocalTvDevice.current),
                                 )
                             }
                         }
@@ -621,7 +624,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                                                 .basicMarquee(
                                                                     iterations = Int.MAX_VALUE,
                                                                     animationMode = MarqueeAnimationMode.Immediately,
-                                                                ).focusable(),
+                                                                ).focusable(!LocalTvDevice.current),
                                                         text = lineText,
                                                         style = typo().bodyMedium,
                                                         color = Color.White,
@@ -645,7 +648,7 @@ private fun NowPlayingM3ExpressiveLayout(
                                                                     .basicMarquee(
                                                                         iterations = Int.MAX_VALUE,
                                                                         animationMode = MarqueeAnimationMode.Immediately,
-                                                                    ).focusable(),
+                                                                    ).focusable(!LocalTvDevice.current),
                                                             text = translatedLineText,
                                                             alignmentText = lineText,
                                                             style = typo().bodyMedium,
@@ -738,7 +741,7 @@ internal fun ExpressiveTrackInfoRow(
                         .basicMarquee(
                             iterations = Int.MAX_VALUE,
                             animationMode = MarqueeAnimationMode.Immediately,
-                        ).focusable(),
+                        ).focusable(!LocalTvDevice.current),
             )
             Spacer(modifier = Modifier.height(3.dp))
             Row(
@@ -765,7 +768,7 @@ internal fun ExpressiveTrackInfoRow(
                             .basicMarquee(
                                 iterations = Int.MAX_VALUE,
                                 animationMode = MarqueeAnimationMode.Immediately,
-                            ).focusable()
+                            ).focusable(!LocalTvDevice.current)
                             .clickable {
                                 actions.onNavigateToArtist()
                             },
@@ -782,7 +785,7 @@ internal fun ExpressiveTrackInfoRow(
                         containerColor = colorScheme.surfaceContainerHigh,
                         contentColor = colorScheme.onSurface,
                     ),
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(48.dp).tvFocusIndicator(),
             ) {
                 Crossfade(targetState = state.likeStatus) { liked ->
                     Icon(

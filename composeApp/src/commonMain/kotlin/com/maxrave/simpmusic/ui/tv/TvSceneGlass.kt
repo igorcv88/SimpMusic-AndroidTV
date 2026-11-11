@@ -1,0 +1,319 @@
+package com.maxrave.simpmusic.ui.tv
+
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.GlobalPositionAwareModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.platform.InspectorInfo
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+/**
+ * The picture every TV glass surface is made of: the ambient artwork, already blurred off the main
+ * thread (see `ambientBlur`). The ambient background publishes it; glass surfaces draw the part of
+ * it that lies behind them, so a panel, a focused row and the rail all carry the colour and light
+ * of the same scene instead of a flat grey fill.
+ *
+ * Nothing is blurred, captured or decoded for a glass surface: it draws one clipped copy of a
+ * bitmap that already exists. That is why the material is the same on API 30 as on 34.
+ */
+@Stable
+class TvScene {
+    var image: ImageBitmap? by mutableStateOf(null)
+        private set
+
+    /** Mean relative luminance of [image], 0..1. Decides how much the glass is smoked for white text. */
+    var luminance by mutableFloatStateOf(0f)
+        private set
+
+    fun show(
+        image: ImageBitmap?,
+        luminance: Float,
+    ) {
+        this.image = image
+        this.luminance = luminance.coerceIn(0f, 1f)
+    }
+}
+
+val LocalTvScene = staticCompositionLocalOf<TvScene?> { null }
+
+/**
+ * - [Panel]: a standing surface (the open rail, a menu, a dialog). Always drawn.
+ * - [Focus]: the surface a focused control or row gains. Brighter and richer than a panel, so focus
+ *   reads as the glass itself lifting, never as a white veil.
+ */
+enum class TvGlassKind { Panel, Focus }
+
+/**
+ * How much black is laid over the scene so that white text keeps its contrast. A dark scene needs
+ * almost none; a bright one is smoked down to [target]. Focused glass is allowed to be brighter.
+ */
+internal fun glassVeilAlpha(
+    sceneLuminance: Float,
+    focused: Boolean,
+): Float {
+    val lifted = sceneLuminance.coerceIn(0f, 1f) * if (focused) FOCUS_BRIGHTNESS else REST_BRIGHTNESS
+    val target = if (focused) FOCUS_TARGET_LUMINANCE else REST_TARGET_LUMINANCE
+    if (lifted <= target) return MIN_VEIL
+    return (1f - target / lifted).coerceIn(MIN_VEIL, MAX_VEIL)
+}
+
+/** Per-surface cache: everything here depends only on the surface's size and outline. */
+internal class TvGlassCache {
+    private var size = Size.Unspecified
+    private var density = 0f
+    private var outline: Outline? = null
+    var path: Path? = null
+        private set
+    var sheen: Brush? = null
+        private set
+    var edge: Brush? = null
+        private set
+    var edgeStroke: Stroke? = null
+        private set
+
+    fun prepare(
+        scope: DrawScope,
+        outline: Outline,
+        forSize: Size,
+    ) {
+        if (this.outline === outline && size == forSize && density == scope.density) return
+        this.outline = outline
+        size = forSize
+        density = scope.density
+        path = Path().apply { addOutline(outline) }
+        val sheenEnd = min(forSize.height * SHEEN_SHARE, with(scope) { SHEEN_MAX.toPx() })
+        sheen = Brush.verticalGradient(listOf(SHEEN_TOP, Color.Transparent), startY = 0f, endY = sheenEnd)
+        // Lit from above: bright along the top, faint down the sides, catching light again at the bottom.
+        edge =
+            Brush.verticalGradient(
+                0f to Color.White.copy(alpha = 0.85f),
+                0.32f to Color.White.copy(alpha = 0.25f),
+                0.75f to Color.White.copy(alpha = 0.10f),
+                1f to Color.White.copy(alpha = 0.35f),
+                startY = 0f,
+                endY = forSize.height,
+            )
+        edgeStroke = Stroke(with(scope) { EDGE_WIDTH.toPx() })
+    }
+}
+
+/**
+ * Draws the glass in [outline], back to front: the scene behind it (screen-aligned, saturated),
+ * the legibility veil, a thin gloss under the top edge, and the specular rim.
+ *
+ * With no scene yet (nothing has played or been focused) it falls back to the drawn material: a
+ * smoked base for a panel, the translucent focus fill for focus.
+ *
+ * @param origin this surface's top-left in root coordinates, [root] the root's size: together
+ * they place the scene so that it stays still behind the glass.
+ * @param alpha the whole material's opacity, for fading a focus surface in and out.
+ */
+internal fun DrawScope.drawSceneGlass(
+    outline: Outline,
+    cache: TvGlassCache,
+    scene: TvScene?,
+    origin: Offset,
+    root: Size,
+    kind: TvGlassKind,
+    alpha: Float = 1f,
+    forSize: Size = size,
+) {
+    if (alpha <= 0.001f) return
+    cache.prepare(this, outline, forSize)
+    val focused = kind == TvGlassKind.Focus
+    val image = scene?.image
+    val path = cache.path
+    if (image != null && path != null && root.width >= 1f && root.height >= 1f) {
+        if (!focused) drawOutline(outline, TvPalette.Background, alpha = alpha)
+        clipPath(path) {
+            drawImage(
+                image = image,
+                dstOffset = IntOffset(-origin.x.roundToInt(), -origin.y.roundToInt()),
+                dstSize = IntSize(root.width.roundToInt(), root.height.roundToInt()),
+                alpha = alpha * if (focused) FOCUS_SCENE_SHARE else PANEL_SCENE_SHARE,
+                colorFilter = if (focused) FocusFilter else RestFilter,
+                filterQuality = FilterQuality.Low,
+            )
+        }
+        drawOutline(outline, Color.Black, alpha = alpha * glassVeilAlpha(scene.luminance, focused))
+    } else if (focused) {
+        drawOutline(outline, TvPalette.FocusFill, alpha = alpha)
+    } else {
+        drawOutline(outline, TvPalette.GlassBase, alpha = alpha)
+        drawOutline(outline, TvPalette.GlassFill, alpha = alpha)
+    }
+    cache.sheen?.let { drawOutline(outline, it, alpha = alpha) }
+    val edge = cache.edge
+    val stroke = cache.edgeStroke
+    if (edge != null && stroke != null) {
+        drawOutline(outline, edge, alpha = alpha * if (focused) 1f else PANEL_EDGE_ALPHA, style = stroke)
+    }
+}
+
+/**
+ * A standing glass surface in [shape]: the open rail, menus, dialogs. It goes before the surface's
+ * own `clip(...)`, because an [elevated] surface draws its shadow outside its bounds.
+ */
+fun Modifier.tvSceneGlass(
+    shape: Shape = TvShapes.Panel,
+    elevated: Boolean = false,
+): Modifier = this.then(TvSceneGlassElement(shape, elevated))
+
+private data class TvSceneGlassElement(
+    val shape: Shape,
+    val elevated: Boolean,
+) : ModifierNodeElement<TvSceneGlassNode>() {
+    override fun create() = TvSceneGlassNode(shape, elevated)
+
+    override fun update(node: TvSceneGlassNode) {
+        node.shape = shape
+        node.elevated = elevated
+        node.invalidateDraw()
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "tvSceneGlass"
+    }
+}
+
+private class TvSceneGlassNode(
+    var shape: Shape,
+    var elevated: Boolean,
+) : Modifier.Node(),
+    DrawModifierNode,
+    GlobalPositionAwareModifierNode,
+    CompositionLocalConsumerModifierNode {
+    private val cache = TvGlassCache()
+    private val placement = TvGlassPlacement()
+    private var outline: Outline? = null
+    private var outlineSize = Size.Unspecified
+    private var outlineShape: Shape? = null
+    private var shadow: Stroke? = null
+
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        if (placement.update(coordinates)) invalidateDraw()
+    }
+
+    override fun ContentDrawScope.draw() {
+        val resolved =
+            outline?.takeIf { outlineSize == size && outlineShape === shape }
+                ?: shape.createOutline(size, layoutDirection, this).also {
+                    outline = it
+                    outlineSize = size
+                    outlineShape = shape
+                }
+        if (elevated) {
+            val ring = shadow ?: Stroke(TvDimens.GlassShadow.toPx() / PANEL_SHADOW_RINGS).also { shadow = it }
+            drawSoftHalo(
+                bounds = Rect(Offset.Zero, size),
+                cornerPx = cornerRadiusOf(resolved, shape),
+                color = Color.Black,
+                alpha = PANEL_SHADOW_ALPHA,
+                ring = ring,
+                dropPx = PANEL_SHADOW_DROP.toPx(),
+            )
+        }
+        drawSceneGlass(resolved, cache, currentValueOf(LocalTvScene), placement.origin, placement.root, TvGlassKind.Panel)
+        drawContent()
+    }
+}
+
+/** Where a glass surface sits in the root, kept by the node that draws it. */
+internal class TvGlassPlacement {
+    var origin = Offset.Zero
+        private set
+    var root = Size.Zero
+        private set
+
+    /** True when the placement changed and the surface must be redrawn. */
+    fun update(coordinates: LayoutCoordinates): Boolean {
+        if (!coordinates.isAttached) return false
+        val nextOrigin = coordinates.positionInRoot()
+        val nextRoot = coordinates.findRootCoordinates().size.toSize()
+        if (nextOrigin == origin && nextRoot == root) return false
+        origin = nextOrigin
+        root = nextRoot
+        return true
+    }
+}
+
+/** The corner a soft halo follows for [outline]; a squircle reports the radius it was built with. */
+internal fun DrawScope.cornerRadiusOf(
+    outline: Outline,
+    shape: Shape?,
+): Float =
+    when (outline) {
+        is Outline.Rounded -> outline.roundRect.topLeftCornerRadius.x
+        is Outline.Rectangle -> 0f
+        is Outline.Generic -> (shape as? TvSquircleShape)?.radius?.toPx() ?: 0f
+    }
+
+private fun glassFilter(
+    saturation: Float,
+    brightness: Float,
+): ColorFilter {
+    val matrix = ColorMatrix().apply { setToSaturation(saturation) }
+    matrix.timesAssign(ColorMatrix().apply { setToScale(brightness, brightness, brightness, 1f) })
+    return ColorFilter.colorMatrix(matrix)
+}
+
+// Saturation above 1: a wide blur averages unlike hues into grey, and the boost gives the scene's
+// colour back. Focus lifts the same glass, brighter and richer.
+private const val REST_BRIGHTNESS = 1.10f
+private const val FOCUS_BRIGHTNESS = 1.26f
+private val RestFilter = glassFilter(saturation = 1.45f, brightness = REST_BRIGHTNESS)
+private val FocusFilter = glassFilter(saturation = 1.65f, brightness = FOCUS_BRIGHTNESS)
+
+private const val PANEL_SCENE_SHARE = 0.92f
+private const val FOCUS_SCENE_SHARE = 0.96f
+private const val PANEL_EDGE_ALPHA = 0.78f
+
+// White text needs 4.5:1; over a surface at 0.18 relative luminance it has about 4.6:1.
+private const val REST_TARGET_LUMINANCE = 0.11f
+private const val FOCUS_TARGET_LUMINANCE = 0.18f
+private const val MIN_VEIL = 0.08f
+private const val MAX_VEIL = 0.82f
+
+private val SHEEN_TOP = Color.White.copy(alpha = 0.11f)
+private const val SHEEN_SHARE = 0.22f
+private val SHEEN_MAX = 40.dp
+private val EDGE_WIDTH = 1.2.dp
+
+private const val PANEL_SHADOW_RINGS = 12
+private const val PANEL_SHADOW_ALPHA = 0.30f
+private val PANEL_SHADOW_DROP = 6.dp

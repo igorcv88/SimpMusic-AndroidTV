@@ -30,7 +30,7 @@ fun NormalAppBar(
     TopAppBar(
         title = title,
         modifier = modifier,
-        navigationIcon = leftIcon ?: {},
+        navigationIcon = if (com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) ({}) else leftIcon ?: {},
         actions = rightIcon ?: {},
         // Every other screen in the app builds its TopAppBar with a transparent container and
         // onBackground content. Leaving `colors` unset here fell back to the Material default

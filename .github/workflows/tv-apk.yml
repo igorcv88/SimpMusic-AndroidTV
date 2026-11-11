@@ -1,0 +1,119 @@
+name: Android TV APK
+
+# Tests for tools/ on every change to them, and a debug APK signed with the TV key on request, so every
+# build installed on the TV carries the same certificate (tools/README.md#signing).
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "debug (installs on the TV) or release (checks the TV certificate)"
+        type: choice
+        options: [debug, release]
+        default: debug
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'androidApp/**'
+      - 'tvAndroidApp/**'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'composeApp/**'
+      - 'gradle/**'
+      - '.github/workflows/tv-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tools-tests:
+    name: tools/ tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the tools' packages
+        run: |
+          python -m venv tools/venv
+          tools/venv/bin/pip install -r tools/requirements.txt -r tools/requirements-perf.txt
+
+      - name: Run the tests
+        run: tools/venv/bin/python -m unittest discover -s tools/tests
+
+  build-validation:
+    name: TV and phone debug builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: microsoft
+          cache: gradle
+      - name: Build both entry points and check TV resources
+        run: |
+          chmod +x gradlew
+          ./gradlew :tvAndroidApp:assembleDebug :androidApp:assembleDebug :tvAndroidApp:lintDebug --no-daemon --max-workers=2
+
+  signed-apk:
+    name: Signed ${{ inputs.build_type }} APK
+    if: github.event_name == 'workflow_dispatch'
+    needs: tools-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+
+      - name: set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: "microsoft"
+          cache: 'gradle'
+
+      - name: Write the signing material
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then echo "::error::the $name secret is not set"; exit 1; fi
+          done
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/tv-release.jks"
+          python3 tools/release_properties.py "$RUNNER_TEMP/tv-signing.properties"
+
+      - name: Build
+        run: |
+          chmod +x gradlew
+          task=":tvAndroidApp:assemble${BUILD_TYPE^}"
+          ./gradlew "$task" "-PtvSigning=$RUNNER_TEMP/tv-signing.properties" --no-daemon
+        env:
+          BUILD_TYPE: ${{ inputs.build_type }}
+
+      - name: Check every APK carries the TV key
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          cd tools
+          for apk in ../tvAndroidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk; do
+            python3 -c "import sys, tv_signing; tv_signing.verify_apk(sys.argv[1], sys.argv[2]); print(sys.argv[1], 'OK')" "$apk" "$apksigner"
+          done
+
+      - name: Remove the signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/tv-release.jks" "$RUNNER_TEMP/tv-signing.properties"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simpmusic-tv-${{ inputs.build_type }}-${{ github.sha }}
+          path: tvAndroidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk
+          if-no-files-found: error

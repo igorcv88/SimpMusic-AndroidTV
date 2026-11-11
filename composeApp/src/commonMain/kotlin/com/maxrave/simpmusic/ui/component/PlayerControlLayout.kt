@@ -2,7 +2,6 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -35,6 +34,7 @@ import com.maxrave.simpmusic.ui.icon.SkipNext
 import com.maxrave.simpmusic.ui.icon.SkipPrevious
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.viewModel.UIEvent
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 @Composable
 fun PlayerControlLayout(

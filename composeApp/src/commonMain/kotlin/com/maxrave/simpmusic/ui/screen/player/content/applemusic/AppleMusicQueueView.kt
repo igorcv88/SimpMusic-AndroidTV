@@ -6,7 +6,6 @@ import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +67,7 @@ import com.maxrave.simpmusic.ui.icon.Shuffle
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.map
@@ -79,6 +79,7 @@ import simpmusic.composeapp.generated.resources.continue_playing
 import simpmusic.composeapp.generated.resources.endless_queue
 import simpmusic.composeapp.generated.resources.now_playing
 import simpmusic.composeapp.generated.resources.radio_mix
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The QUEUE body: compact header, [Info][PlaylistAdd][Shuffle][Repeat] pills, a "Continue
@@ -254,7 +255,8 @@ internal fun AppleMusicQueueView(
                                     overscrollJob?.cancel()
                                 },
                             )
-                        },
+                        }
+                        .tvFocusRestorer(),
             ) {
                 itemsIndexed(
                     upcoming,

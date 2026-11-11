@@ -11,7 +11,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -110,6 +109,9 @@ import com.maxrave.simpmusic.ui.icon.ThumbsUpDown
 import com.maxrave.simpmusic.ui.theme.blackMoreOverlay
 import com.maxrave.simpmusic.ui.theme.overlay
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.viewModel.LyricsProvider
 import com.maxrave.simpmusic.viewModel.UIEvent
 import org.jetbrains.compose.resources.stringResource
@@ -133,6 +135,7 @@ import simpmusic.composeapp.generated.resources.show
 import simpmusic.composeapp.generated.resources.spotify_lyrics_provider
 import simpmusic.composeapp.generated.resources.unsynced
 import simpmusic.composeapp.generated.resources.view_count
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 // Shared shape for the below-the-fold tonal cards.
 private val ExpressiveCardShape = RoundedCornerShape(20.dp)
@@ -424,7 +427,7 @@ internal fun ExpressiveArtworkCardPage(
                                                 onClick = {
                                                     actions.onEnterFullscreenVideo()
                                                 },
-                                                modifier = Modifier.align(Alignment.TopEnd),
+                                                modifier = Modifier.align(Alignment.TopEnd).tvFocusIndicator(),
                                             ) {
                                                 Icon(
                                                     imageVector = SimpIcons.Fullscreen,
@@ -450,7 +453,8 @@ internal fun ExpressiveArtworkCardPage(
                                                             Modifier
                                                                 .size(48.dp)
                                                                 .aspectRatio(1f)
-                                                                .clip(CircleShape),
+                                                                .clip(CircleShape)
+                                                                .tvFocusIndicator(),
                                                         onClick = {
                                                             actions.onUIEvent(UIEvent.Backward)
                                                         },
@@ -474,7 +478,8 @@ internal fun ExpressiveArtworkCardPage(
                                                             Modifier
                                                                 .size(48.dp)
                                                                 .aspectRatio(1f)
-                                                                .clip(CircleShape),
+                                                                .clip(CircleShape)
+                                                                .tvFocusIndicator(),
                                                         onClick = {
                                                             actions.onUIEvent(UIEvent.Forward)
                                                         },
@@ -496,7 +501,7 @@ internal fun ExpressiveArtworkCardPage(
                                                     onClick = {
                                                         internalShowSubtitle = !internalShowSubtitle
                                                     },
-                                                    modifier = Modifier.align(Alignment.BottomEnd),
+                                                    modifier = Modifier.align(Alignment.BottomEnd).tvFocusIndicator(),
                                                 ) {
                                                     Icon(
                                                         imageVector =
@@ -601,6 +606,7 @@ internal fun ExpressiveBelowTheFold(
                                     onClick = {
                                         actions.onShowVoteDialog()
                                     },
+                                    modifier = Modifier.tvFocusIndicator(),
                                 ) {
                                     Icon(
                                         imageVector = SimpIcons.ThumbsUpDown,
@@ -616,6 +622,7 @@ internal fun ExpressiveBelowTheFold(
                             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                                 IconButton(
                                     onClick = { showLyricsOffsetBar = !showLyricsOffsetBar },
+                                    modifier = Modifier.tvFocusIndicator(),
                                 ) {
                                     Icon(
                                         imageVector = SimpIcons.AvTimer,
@@ -630,6 +637,7 @@ internal fun ExpressiveBelowTheFold(
                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                             IconButton(
                                 onClick = { showShareLyricsSheet = true },
+                                modifier = Modifier.tvFocusIndicator(),
                             ) {
                                 Icon(
                                     imageVector = SimpIcons.Share,
@@ -649,7 +657,8 @@ internal fun ExpressiveBelowTheFold(
                                 modifier =
                                     Modifier
                                         .height(20.dp)
-                                        .wrapContentWidth(),
+                                        .wrapContentWidth()
+                                        .tvFocusIndicator(),
                             ) {
                                 Text(text = stringResource(Res.string.show), color = Color.White)
                             }
@@ -981,11 +990,11 @@ internal fun ExpressiveCollapsedToolbar(
                                         ).basicMarquee(
                                             iterations = Int.MAX_VALUE,
                                             animationMode = MarqueeAnimationMode.Immediately,
-                                        ).focusable(),
+                                        ).focusable(!LocalTvDevice.current),
                             )
                             val artistRowState = rememberLazyListState()
                             LazyRow(
-                                modifier = Modifier.mouseDragScroll(artistRowState),
+                                modifier = Modifier.mouseDragScroll(artistRowState).tvFocusRestorer(),
                                 state = artistRowState,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -1014,7 +1023,7 @@ internal fun ExpressiveCollapsedToolbar(
                                                 ).basicMarquee(
                                                     iterations = Int.MAX_VALUE,
                                                     animationMode = MarqueeAnimationMode.Immediately,
-                                                ).focusable(),
+                                                ).focusable(!LocalTvDevice.current),
                                     )
                                 }
                             }

@@ -13,7 +13,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,6 +53,7 @@ import com.maxrave.simpmusic.ui.screen.player.content.stripRichSyncTimestamps
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToLong
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The line being sung, directly over the progress bar. Tapping it opens the Lyrics tab.

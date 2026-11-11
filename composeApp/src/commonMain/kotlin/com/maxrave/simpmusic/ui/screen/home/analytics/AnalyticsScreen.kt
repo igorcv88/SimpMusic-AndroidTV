@@ -458,7 +458,7 @@ fun AnalyticsScreen(
         // window edge; its like/more pill sits at the header's own 32dp gutter.
         val backGutter = if (isPortrait) 12.dp else 24.dp
         val pillGutter = if (isPortrait) 16.dp else LANDSCAPE_GUTTER
-        LiquidGlassIconButton(
+        if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { LiquidGlassIconButton(
             backdrop = headerBackdrop,
             imageVector = SimpIcons.ArrowBackIosNew,
             shape = RoundedCornerShape(24.dp),
@@ -473,7 +473,7 @@ fun AnalyticsScreen(
                     .size(48.dp),
         ) {
             navController.navigateUp()
-        }
+        } }
 
         // The receipt button shares the pill's row instead of taking a corner of its own, so the pill
         // keeps its place and the button appears beside it once there is a list to print.

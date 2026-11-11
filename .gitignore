@@ -13,6 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+secrets.env
 /app/release/
 crowdin.yml
 # Kotlin 2.0
@@ -47,3 +48,15 @@ sentry.properties
 /desktopApp/generated.conveyor.conf
 # Conveyor output directory
 /output/
+
+# Android TV tools (tools/README.md): local venv, ADB key, measurement and smoke-test output
+tools/venv/
+tools/adbkey/
+tools/**/__pycache__/
+bench-results/
+traces/
+work/
+shots/
+smoke/
+
+/tvAndroidApp/build/

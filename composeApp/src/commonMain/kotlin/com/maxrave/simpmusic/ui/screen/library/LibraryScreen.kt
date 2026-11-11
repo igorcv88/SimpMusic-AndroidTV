@@ -7,6 +7,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusDirection
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +21,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -77,6 +85,9 @@ import com.maxrave.simpmusic.ui.component.LibraryTilingBox
 import com.maxrave.simpmusic.ui.component.taste.ShareTasteSheet
 import com.maxrave.simpmusic.ui.component.taste.TasteCard
 import com.maxrave.simpmusic.ui.component.ListenTogetherIconButton
+import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
@@ -130,6 +141,9 @@ fun LibraryScreen(
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
     val density = LocalDensity.current
+    val tvDevice = LocalTvDevice.current
+    val libraryContentFocus = remember { FocusRequester() }
+    val libraryListState = rememberLazyListState()
 
     val loggedIn by viewModel.youtubeLoggedIn.collectAsStateWithLifecycle(initialValue = false)
     // Wrapped and its recaps are built entirely from playback_event, so the chip follows the same
@@ -238,12 +252,12 @@ fun LibraryScreen(
     // the row its sibling (nesting the row inside the source is the RuntimeShader feedback loop).
     val chipBackdrop = rememberBackdrop(MaterialTheme.colorScheme.background)
     Crossfade(
-        modifier = Modifier.then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
+        modifier = Modifier.then(if (tvDevice) Modifier.tvDestinationEntry().focusRequester(libraryContentFocus).tvFocusRestorer().focusGroup() else Modifier).then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier).hazeSource(hazeState),
         targetState = currentFilter,
     ) { filter ->
         when (filter) {
             LibraryChipType.YOUR_LIBRARY -> {
-                val state = rememberLazyListState()
+                val state = libraryListState
                 val isScrollingUp by state.isScrollingUp()
                 LaunchedEffect(state) {
                     snapshotFlow { state.firstVisibleItemIndex }
@@ -278,7 +292,7 @@ fun LibraryScreen(
                             ),
                         state = state,
                     ) {
-                        item {
+                        item(key = "collections") {
                             LibraryTilingBox(navController, libraryOverview, cachedPreview)
                         }
 
@@ -455,27 +469,36 @@ fun LibraryScreen(
                     containerColor = Color.Transparent,
                 ),
             navigationIcon = {
-                AnimatedVisibility(
-                    !accountThumbnail.isNullOrEmpty(),
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    AsyncImage(
-                        model =
-                            ImageRequest
-                                .Builder(LocalPlatformContext.current)
-                                .data(accountThumbnail)
-                                .crossfade(550)
-                                .build(),
-                        placeholder = rememberVectorPainter(SimpIcons.PeopleAlt),
-                        error = rememberVectorPainter(SimpIcons.PeopleAlt),
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .size(26.dp)
-                                .clip(CircleShape),
-                    )
+                // TV: the Now Playing chip follows the profile, as on Home (Spotify TV's placement).
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AnimatedVisibility(
+                        !accountThumbnail.isNullOrEmpty(),
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        AsyncImage(
+                            model =
+                                ImageRequest
+                                    .Builder(LocalPlatformContext.current)
+                                    .data(accountThumbnail)
+                                    .crossfade(550)
+                                    .build(),
+                            placeholder = rememberVectorPainter(SimpIcons.PeopleAlt),
+                            error = rememberVectorPainter(SimpIcons.PeopleAlt),
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape),
+                        )
+                    }
+                    if (LocalTvDevice.current) {
+                        TvNowPlayingChip(
+                            onOpen = { navController.navigate(FullscreenDestination) },
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
                 }
             },
             // The Library bar had no actions slot at all — added for the Listen Together entry,
@@ -508,6 +531,13 @@ fun LibraryScreen(
         Row(
             modifier =
                 Modifier
+                    .then(if (tvDevice) Modifier.focusProperties {
+                        onExit = {
+                            if (requestedFocusDirection == FocusDirection.Down && libraryContentFocus.requestFocus()) {
+                                cancelFocusChange()
+                            }
+                        }
+                    }.focusGroup() else Modifier)
                     .horizontalScroll(chipRowState)
                     .padding(horizontal = 15.dp)
                     .padding(bottom = 8.dp)

@@ -10,7 +10,6 @@ import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -146,6 +145,9 @@ import com.maxrave.simpmusic.ui.navigation.destination.login.SpotifyLoginDestina
 import com.maxrave.simpmusic.ui.theme.md_theme_dark_primary
 import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.viewModel.ImportViewModel
 import com.maxrave.simpmusic.viewModel.SettingAlertState
@@ -453,6 +455,7 @@ import simpmusic.composeapp.generated.resources.youtube_transcript
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -683,7 +686,8 @@ fun SettingScreen(
         modifier =
             Modifier
                 .padding(horizontal = listSidePadding)
-                .hazeSource(hazeState),
+                .hazeSource(hazeState)
+                .tvFocusRestorer(),
     ) {
         item(key = "user_interface") {
             Column {
@@ -2871,6 +2875,7 @@ fun SettingScreen(
                         alertBasicState.confirm.second.invoke()
                         viewModel.setBasicAlertData(null)
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Text(text = alertBasicState.confirm.first)
                 }
@@ -2880,6 +2885,7 @@ fun SettingScreen(
                     onClick = {
                         viewModel.setBasicAlertData(null)
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Text(text = alertBasicState.dismiss)
                 }
@@ -2974,10 +2980,11 @@ fun SettingScreen(
                         }
                         showColorPickerDialog = false
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) { Text(text = stringResource(Res.string.change)) }
             },
             dismissButton = {
-                TextButton(onClick = { showColorPickerDialog = false }) {
+                TextButton(onClick = { showColorPickerDialog = false }, modifier = Modifier.tvFocusIndicator()) {
                     Text(text = stringResource(Res.string.cancel))
                 }
             },
@@ -3011,7 +3018,7 @@ fun SettingScreen(
                         }",
                     )
                 }
-                LazyColumn(modifier = Modifier.padding(8.dp)) {
+                LazyColumn(modifier = Modifier.padding(8.dp).tvFocusRestorer()) {
                     item {
                         Box(
                             modifier =
@@ -3028,7 +3035,8 @@ fun SettingScreen(
                                 modifier =
                                     Modifier
                                         .align(Alignment.CenterStart)
-                                        .fillMaxHeight(),
+                                        .fillMaxHeight()
+                                        .tvFocusIndicator(),
                             ) {
                                 Icon(SimpIcons.Close, null, tint = MaterialTheme.colorScheme.onSurface)
                             }
@@ -3213,7 +3221,8 @@ fun SettingScreen(
                     LazyColumn(
                         Modifier
                             .padding(vertical = 6.dp)
-                            .heightIn(0.dp, 500.dp),
+                            .heightIn(0.dp, 500.dp)
+                            .tvFocusRestorer(),
                     ) {
                         items(alertState.selectOne.listSelect) { item ->
                             val onSelect = {
@@ -3246,6 +3255,7 @@ fun SettingScreen(
                                     onClick = {
                                         onSelect.invoke()
                                     },
+                                    modifier = Modifier.tvFocusIndicator(),
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
@@ -3259,15 +3269,13 @@ fun SettingScreen(
                                             .basicMarquee(
                                                 iterations = Int.MAX_VALUE,
                                                 animationMode = MarqueeAnimationMode.Immediately,
-                                            ).focusable(),
+                                            ).focusable(!LocalTvDevice.current),
                                 )
                             }
                         }
                     }
                 } else if (alertState.multipleSelect != null) {
-                    LazyColumn(
-                        Modifier.padding(vertical = 6.dp),
-                    ) {
+                    LazyColumn(Modifier.padding(vertical = 6.dp).tvFocusRestorer()) {
                         items(alertState.multipleSelect.listSelect) { item ->
                             val onCheck = {
                                 viewModel.setAlertData(
@@ -3322,6 +3330,7 @@ fun SettingScreen(
                         } else {
                             true
                         },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Text(text = alertState.confirm.first)
                 }
@@ -3331,6 +3340,7 @@ fun SettingScreen(
                     onClick = {
                         viewModel.setAlertData(null)
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Text(text = alertState.dismiss)
                 }
@@ -3410,7 +3420,7 @@ fun SettingScreen(
                             },
                             navigationIcon = {
                                 Box(Modifier.padding(horizontal = 5.dp)) {
-                                    RippleIconButton(
+                                    if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                                         SimpIcons.ArrowBackIosNew,
                                         Modifier
                                             .size(32.dp),
@@ -3421,7 +3431,7 @@ fun SettingScreen(
                                             sheetState.hide()
                                             showThirdPartyLibraries = false
                                         }
-                                    }
+                                    } }
                                 }
                             },
                         )
@@ -3472,14 +3482,14 @@ private fun SettingTopBar(
         },
         navigationIcon = {
             Box(Modifier.padding(horizontal = 5.dp)) {
-                RippleIconButton(
+                if (!com.maxrave.simpmusic.ui.tv.LocalTvDevice.current) { RippleIconButton(
                     SimpIcons.ArrowBackIosNew,
                     Modifier.size(32.dp),
                     true,
                     tint = MaterialTheme.colorScheme.onSurface,
                 ) {
                     onBack()
-                }
+                } }
             }
         },
         windowInsets = windowInsets,
@@ -3575,7 +3585,7 @@ private fun ImportProgressDialog(
         },
         confirmButton = {
             if (finished) {
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onDismiss, modifier = Modifier.tvFocusIndicator()) {
                     Text(text = stringResource(Res.string.ok))
                 }
             }

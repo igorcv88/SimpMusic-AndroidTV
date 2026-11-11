@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.screen.player
 
+import com.maxrave.simpmusic.expect.ui.PlatformBackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
@@ -45,6 +46,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,8 +55,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -71,6 +80,7 @@ import com.maxrave.simpmusic.extension.lengthLabel
 import com.maxrave.simpmusic.extension.rememberIsInPipMode
 import com.maxrave.simpmusic.extension.smoothScrimBrush
 import com.maxrave.simpmusic.ui.component.AddLyricsSheet
+import com.maxrave.simpmusic.ui.component.QueueBottomSheet
 import com.maxrave.simpmusic.ui.component.NowPlayingBottomSheet
 import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
@@ -83,12 +93,18 @@ import com.maxrave.simpmusic.ui.icon.Pause
 import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.Replay5
 import com.maxrave.simpmusic.ui.icon.SimpIcons
+import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.SkipNext
 import com.maxrave.simpmusic.ui.icon.SkipPrevious
 import com.maxrave.simpmusic.ui.icon.Subtitles
 import com.maxrave.simpmusic.ui.icon.SubtitlesOff
 import com.maxrave.simpmusic.ui.theme.overlay
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvInitialFocus
+import com.maxrave.simpmusic.ui.tv.tvRemoteActions
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.delay
@@ -135,9 +151,23 @@ fun FullscreenPlayer(
     var sliderValue by rememberSaveable {
         mutableFloatStateOf(0f)
     }
+    // On a TV this screen is the player itself, so it opens with its controls showing.
+    val tvDevice = LocalTvDevice.current
     var showHideFullscreenOverlay by rememberSaveable {
-        mutableStateOf(false)
+        mutableStateOf(tvDevice)
     }
+    var showQueue by rememberSaveable { mutableStateOf(false) }
+    PlatformBackHandler(
+        enabled = tvDevice && showHideFullscreenOverlay && !showBottom && !showQueue && addLyricsFor == null,
+    ) {
+        showHideFullscreenOverlay = false
+    }
+    // Bumped on every remote key, so the controls stay up while the user is still pressing keys.
+    var lastKeyTick by remember { mutableIntStateOf(0) }
+    // The key that brought the controls back is swallowed whole, so its release cannot press
+    // whatever button the controls focus on appearing.
+    var swallowKeyUp by remember { mutableStateOf<Key?>(null) }
+    val surfaceFocus = remember { FocusRequester() }
 
     LaunchedEffect(key1 = timelineState, key2 = isSliding) {
         if (!isSliding) {
@@ -150,10 +180,17 @@ fun FullscreenPlayer(
         }
     }
 
-    LaunchedEffect(key1 = showHideFullscreenOverlay, key2 = isSliding) {
-        if (showHideFullscreenOverlay && !isSliding) {
-            delay(3000)
+    LaunchedEffect(showHideFullscreenOverlay, isSliding, lastKeyTick, showBottom, showQueue) {
+        if (showHideFullscreenOverlay && !isSliding && !showBottom && !showQueue) {
+            delay(if (tvDevice) TV_OVERLAY_TIMEOUT_MS else 3000L)
             showHideFullscreenOverlay = false
+        }
+    }
+    // The focused control leaves with the controls; hand focus to the seek surface so the next
+    // key still lands on this screen.
+    LaunchedEffect(showHideFullscreenOverlay) {
+        if (tvDevice && !showHideFullscreenOverlay && !showBottom && !showQueue) {
+            runCatching { surfaceFocus.requestFocus() }
         }
     }
 
@@ -186,7 +223,33 @@ fun FullscreenPlayer(
         mutableStateOf(true)
     }
 
-    Box {
+    Box(
+        Modifier.then(
+            if (tvDevice) {
+                Modifier.onPreviewKeyEvent { event ->
+                    if (event.key == Key.Back) return@onPreviewKeyEvent false
+                    if (event.type == KeyEventType.KeyUp && swallowKeyUp == event.key) {
+                        swallowKeyUp = null
+                        return@onPreviewKeyEvent true
+                    }
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    lastKeyTick++
+                    val wakesControls =
+                        event.key == Key.DirectionCenter || event.key == Key.Enter ||
+                            event.key == Key.DirectionUp || event.key == Key.DirectionDown
+                    if (!showHideFullscreenOverlay && wakesControls) {
+                        showHideFullscreenOverlay = true
+                        swallowKeyUp = event.key
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                Modifier
+            },
+        ),
+    ) {
         MediaPlayerViewWithSubtitle(
             playerName = MAIN_PLAYER,
             modifier =
@@ -216,6 +279,12 @@ fun FullscreenPlayer(
                         ).indication(
                             interactionSource = interactionSourceBackward,
                             indication = ripple(),
+                        ).focusRequester(surfaceFocus)
+                        .tvRemoteActions(
+                            onClick = { showHideFullscreenOverlay = !showHideFullscreenOverlay },
+                            onLeft = { sharedViewModel.onUIEvent(UIEvent.Backward) },
+                            onRight = { sharedViewModel.onUIEvent(UIEvent.Forward) },
+                            showFocusIndicator = false,
                         ).pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
@@ -268,6 +337,11 @@ fun FullscreenPlayer(
                         ).indication(
                             interactionSource = interactionSourceForward,
                             indication = ripple(),
+                        ).tvRemoteActions(
+                            onClick = { showHideFullscreenOverlay = !showHideFullscreenOverlay },
+                            onLeft = { sharedViewModel.onUIEvent(UIEvent.Backward) },
+                            onRight = { sharedViewModel.onUIEvent(UIEvent.Forward) },
+                            showFocusIndicator = false,
                         ).pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
@@ -352,18 +426,20 @@ fun FullscreenPlayer(
                                             .basicMarquee(
                                                 iterations = Int.MAX_VALUE,
                                                 animationMode = MarqueeAnimationMode.Immediately,
-                                            ).focusable(),
+                                            ).focusable(!LocalTvDevice.current),
                                 )
                             },
                             navigationIcon = {
                                 Box(Modifier.padding(horizontal = 5.dp)) {
-                                    RippleIconButton(
-                                        SimpIcons.ArrowBackIosNew,
-                                        Modifier
-                                            .size(32.dp),
-                                        true,
-                                    ) {
-                                        navController.navigateUp()
+                                    if (!LocalTvDevice.current) {
+                                        RippleIconButton(
+                                            SimpIcons.ArrowBackIosNew,
+                                            Modifier
+                                                .size(32.dp),
+                                            true,
+                                        ) {
+                                            navController.navigateUp()
+                                        }
                                     }
                                 }
                             },
@@ -394,7 +470,7 @@ fun FullscreenPlayer(
                                             .aspectRatio(1f)
                                             .clip(
                                                 CircleShape,
-                                            ),
+                                            ).tvFocusIndicator(),
                                     enabled = controllerState.isPreviousAvailable,
                                     onClick = {
                                         sharedViewModel.onUIEvent(UIEvent.Previous)
@@ -420,7 +496,7 @@ fun FullscreenPlayer(
                                             .aspectRatio(1f)
                                             .clip(
                                                 CircleShape,
-                                            ),
+                                            ).tvFocusIndicator(),
                                     onClick = {
                                         sharedViewModel.onUIEvent(UIEvent.Backward)
                                     },
@@ -445,7 +521,8 @@ fun FullscreenPlayer(
                                             .aspectRatio(1f)
                                             .clip(
                                                 CircleShape,
-                                            ),
+                                            ).tvFocusIndicator()
+                                            .tvInitialFocus(),
                                     onClick = {
                                         sharedViewModel.onUIEvent(UIEvent.PlayPause)
                                     },
@@ -483,7 +560,7 @@ fun FullscreenPlayer(
                                             .aspectRatio(1f)
                                             .clip(
                                                 CircleShape,
-                                            ),
+                                            ).tvFocusIndicator(),
                                     onClick = {
                                         sharedViewModel.onUIEvent(UIEvent.Forward)
                                     },
@@ -508,7 +585,7 @@ fun FullscreenPlayer(
                                             .aspectRatio(1f)
                                             .clip(
                                                 CircleShape,
-                                            ),
+                                            ).tvFocusIndicator(),
                                     enabled = controllerState.isNextAvailable,
                                     onClick = {
                                         sharedViewModel.onUIEvent(UIEvent.Next)
@@ -610,6 +687,24 @@ fun FullscreenPlayer(
                                                     .padding(top = 3.dp)
                                                     .align(
                                                         Alignment.TopCenter,
+                                                    ).tvSliderKeys(
+                                                        value = sliderValue / 100f,
+                                                        range = 0f..1f,
+                                                        // One press moves 5 s, like the replay/forward buttons.
+                                                        step =
+                                                            if (timelineState.total > 0L) {
+                                                                TV_SEEK_STEP_MS / timelineState.total.toFloat()
+                                                            } else {
+                                                                0.02f
+                                                            },
+                                                        onChange = {
+                                                            isSliding = true
+                                                            sliderValue = it * 100f
+                                                        },
+                                                        onFinished = {
+                                                            isSliding = false
+                                                            sharedViewModel.onUIEvent(UIEvent.UpdateProgress(sliderValue))
+                                                        },
                                                     ),
                                             track = { sliderState ->
                                                 SliderDefaults.Track(
@@ -687,6 +782,29 @@ fun FullscreenPlayer(
                                             .align(Alignment.CenterEnd),
                                         verticalAlignment = Alignment.Top,
                                     ) {
+                                        if (tvDevice) {
+                                            FilledTonalIconButton(
+                                                colors =
+                                                    IconButtonDefaults.iconButtonColors().copy(
+                                                        containerColor = Color.Transparent,
+                                                    ),
+                                                modifier =
+                                                    Modifier
+                                                        .size(32.dp)
+                                                        .aspectRatio(1f)
+                                                        .clip(CircleShape)
+                                                        .tvFocusIndicator(),
+                                                onClick = { showQueue = true },
+                                            ) {
+                                                Icon(
+                                                    imageVector = SimpIcons.QueueMusic,
+                                                    tint = Color.White,
+                                                    contentDescription = "",
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                            }
+                                            Spacer(Modifier.width(8.dp))
+                                        }
                                         FilledTonalIconButton(
                                             colors =
                                                 IconButtonDefaults.iconButtonColors().copy(
@@ -698,7 +816,7 @@ fun FullscreenPlayer(
                                                     .aspectRatio(1f)
                                                     .clip(
                                                         CircleShape,
-                                                    ),
+                                                    ).tvFocusIndicator(),
                                             onClick = {
                                                 shouldShowSubtitle = !shouldShowSubtitle
                                             },
@@ -726,30 +844,32 @@ fun FullscreenPlayer(
                                             }
                                         }
                                         Spacer(Modifier.width(8.dp))
-                                        FilledTonalIconButton(
-                                            colors =
-                                                IconButtonDefaults.iconButtonColors().copy(
-                                                    containerColor = Color.Transparent,
-                                                ),
-                                            modifier =
-                                                Modifier
-                                                    .size(32.dp)
-                                                    .aspectRatio(1f)
-                                                    .clip(
-                                                        CircleShape,
+                                        if (!tvDevice) {
+                                            FilledTonalIconButton(
+                                                colors =
+                                                    IconButtonDefaults.iconButtonColors().copy(
+                                                        containerColor = Color.Transparent,
                                                     ),
-                                            onClick = {
-                                                navController.navigateUp()
-                                            },
-                                        ) {
-                                            Icon(
-                                                imageVector = SimpIcons.FullscreenExit,
-                                                tint = Color.White,
-                                                contentDescription = "",
                                                 modifier =
                                                     Modifier
-                                                        .size(24.dp),
-                                            )
+                                                        .size(32.dp)
+                                                        .aspectRatio(1f)
+                                                        .clip(
+                                                            CircleShape,
+                                                        ).tvFocusIndicator(),
+                                                onClick = {
+                                                    navController.navigateUp()
+                                                },
+                                            ) {
+                                                Icon(
+                                                    imageVector = SimpIcons.FullscreenExit,
+                                                    tint = Color.White,
+                                                    contentDescription = "",
+                                                    modifier =
+                                                        Modifier
+                                                            .size(24.dp),
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -778,6 +898,13 @@ fun FullscreenPlayer(
                         },
                 )
             }
+            if (showQueue) {
+                QueueBottomSheet(
+                    onDismiss = { showQueue = false },
+                    navController = navController,
+                    onNavigateToOtherScreen = { navController.navigateUp() },
+                )
+            }
             addLyricsFor?.let { (videoId, title, artist) ->
                 AddLyricsSheet(
                     songTitle = title,
@@ -795,3 +922,8 @@ expect fun FullScreenRotationImmersive(
     onLaunch: () -> Unit = {},
     onDispose: () -> Unit = {},
 )
+
+/** How long the TV controls stay up after the last remote key. */
+private const val TV_OVERLAY_TIMEOUT_MS = 5000L
+
+private const val TV_SEEK_STEP_MS = 5000f
