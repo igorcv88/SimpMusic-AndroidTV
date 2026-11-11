@@ -1,0 +1,111 @@
+name: CI - Android TV
+
+# PRs are checked without signing credentials. Only trusted dev builds create APKs.
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-build:
+    name: Test and build signed TV APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify trusted signing context
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ "$GITHUB_REF" != 'refs/heads/dev' ]; then
+            echo '::error::Signed APKs may only be built from dev.'
+            exit 1
+          fi
+
+      - name: Prepare TV signing key
+        if: github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tv-release.jks"
+          python3 tools/release_properties.py "$RUNNER_TEMP/tv-signing.properties"
+
+      - name: Test TV tools
+        run: |
+          set -euo pipefail
+          python -m venv tools/venv
+          tools/venv/bin/pip install -r tools/requirements.txt -r tools/requirements-perf.txt
+          tools/venv/bin/python -m unittest discover -s tools/tests
+
+      - name: Test shared code and compile Android sources
+        run: |
+          chmod +x gradlew
+          ./gradlew :composeApp:jvmTest :composeApp:compileAndroidMain :tvAndroidApp:processDebugMainManifest --no-daemon --max-workers=2
+
+      - name: Build signed TV release APKs
+        if: github.event_name != 'pull_request'
+        run: |
+          ./gradlew :tvAndroidApp:assembleRelease "-PtvSigning=$RUNNER_TEMP/tv-signing.properties" --no-daemon --max-workers=2
+
+      - name: Verify signatures on every APK
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(tvAndroidApp/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo '::error::No TV release APKs were produced.'
+            exit 1
+          fi
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          for apk in "${apks[@]}"; do
+            python3 -c 'import sys; from tools.tv_signing import verify_apk; verify_apk(sys.argv[1], sys.argv[2])' "$apk" "$apksigner"
+            echo "Verified TV certificate: $(basename "$apk")"
+          done
+
+      - name: Publish signed APKs (one day)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: simpmusic-tv-ci-${{ github.sha }}
+          path: tvAndroidApp/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/tv-release.jks" "$RUNNER_TEMP/tv-signing.properties"

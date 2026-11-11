@@ -1,0 +1,126 @@
+name: Release - signed Android TV APKs
+
+# The release publishes APKs only as GitHub Release assets, never as run artifacts.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'New release tag (for example v2.5.0-tv.1)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Publish as a pre-release'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-android-tv
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, verify and publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check release target before building
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != 'refs/heads/dev' ]; then
+            echo '::error::Choose the dev branch when dispatching a release.'
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]; then
+            echo '::error::The release tag must look like v2.5.0 or v2.5.0-tv.1.'
+            exit 1
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          persist-credentials: true
+
+      - name: Refuse existing tag or release
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --refs origin "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::Tag $RELEASE_TAG already exists; choose a new version."
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::Release $RELEASE_TAG already exists."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare TV signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Missing GitHub Actions secret: $name"
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/tv-release.jks"
+          python3 tools/release_properties.py "$RUNNER_TEMP/tv-signing.properties"
+
+      - name: Build signed TV release APKs
+        run: |
+          chmod +x gradlew
+          ./gradlew :tvAndroidApp:assembleRelease "-PtvSigning=$RUNNER_TEMP/tv-signing.properties" --no-daemon --max-workers=2
+
+      - name: Verify every signed APK
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(tvAndroidApp/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo '::error::No TV release APKs were produced.'
+            exit 1
+          fi
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          for apk in "${apks[@]}"; do
+            python3 -c 'import sys; from tools.tv_signing import verify_apk; verify_apk(sys.argv[1], sys.argv[2])' "$apk" "$apksigner"
+            echo "Verified TV certificate: $(basename "$apk")"
+          done
+
+      - name: Publish GitHub Release with APK assets
+        env:
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(tvAndroidApp/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo '::error::No signed APKs to publish.'
+            exit 1
+          fi
+          args=(--title "SimpMusic Android TV $RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes)
+          if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" "${apks[@]}" "${args[@]}"
+          gh release view "$RELEASE_TAG" --json url,assets
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/tv-release.jks" "$RUNNER_TEMP/tv-signing.properties"
