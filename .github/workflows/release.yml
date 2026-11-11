@@ -1,16 +1,13 @@
 name: Release - signed Android TV APKs
 
-# The release publishes APKs only as GitHub Release assets, never as run artifacts.
+# A single click bumps versionName/versionCode, builds signed APKs and publishes
+# them directly in GitHub Releases. No Actions artifacts are created here.
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'New release tag (for example v2.5.0-tv.1)'
-        required: true
-        type: string
       prerelease:
         description: 'Publish as a pre-release'
-        required: true
+        required: false
         default: false
         type: boolean
 
@@ -23,22 +20,16 @@ concurrency:
 
 jobs:
   release:
-    name: Build, verify and publish GitHub Release
+    name: Auto-bump, build, verify and publish TV release
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ inputs.tag }}
     steps:
-      - name: Check release target before building
+      - name: Require trusted default branch
         run: |
-          set -euo pipefail
           if [ "$GITHUB_REF" != 'refs/heads/dev' ]; then
             echo '::error::Choose the dev branch when dispatching a release.'
-            exit 1
-          fi
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]; then
-            echo '::error::The release tag must look like v2.5.0 or v2.5.0-tv.1.'
             exit 1
           fi
 
@@ -47,15 +38,23 @@ jobs:
           submodules: recursive
           persist-credentials: true
 
-      - name: Refuse existing tag or release
+      - name: Calculate the next version and bump Android versionCode
+        id: version
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --refs origin "refs/tags/$RELEASE_TAG" >/dev/null; then
-            echo "::error::Tag $RELEASE_TAG already exists; choose a new version."
+          python3 tools/tv_release_version.py --catalog gradle/libs.versions.toml --github-output "$GITHUB_OUTPUT"
+
+      - name: Refuse an existing release or tag
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --refs --tags origin "refs/tags/$RELEASE_TAG" >/dev/null; then
+            echo "::error::Tag $RELEASE_TAG already exists; refusing to replace it."
             exit 1
           fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "::error::Release $RELEASE_TAG already exists."
+            echo "::error::Release $RELEASE_TAG already exists; refusing to replace it."
             exit 1
           fi
 
@@ -89,7 +88,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :tvAndroidApp:assembleRelease "-PtvSigning=$RUNNER_TEMP/tv-signing.properties" --no-daemon --max-workers=2
 
-      - name: Verify every signed APK
+      - name: Verify signatures on every APK
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -104,8 +103,30 @@ jobs:
             echo "Verified TV certificate: $(basename "$apk")"
           done
 
-      - name: Publish GitHub Release with APK assets
+      # Only persist a new version after the APKs are confirmed buildable and
+      # signed. A non-fast-forward push fails safely if dev changed mid-build.
+      - name: Commit verified version bump to dev
+        id: target
         env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          NEEDS_COMMIT: ${{ steps.version.outputs.needs_commit }}
+        run: |
+          set -euo pipefail
+          if [ "$NEEDS_COMMIT" = true ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -- gradle/libs.versions.toml
+            git commit -m "chore(tv-release): bump to $RELEASE_TAG [skip ci]"
+            git push origin HEAD:dev
+          else
+            echo 'Resuming an earlier verified bump that has not been tagged.'
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release with signed APK assets
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_SHA: ${{ steps.target.outputs.sha }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
           set -euo pipefail
@@ -115,7 +136,7 @@ jobs:
             echo '::error::No signed APKs to publish.'
             exit 1
           fi
-          args=(--title "SimpMusic Android TV $RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes)
+          args=(--title "SimpMusic Android TV $RELEASE_TAG" --target "$RELEASE_SHA" --generate-notes)
           if [ "$PRERELEASE" = true ]; then args+=(--prerelease); fi
           gh release create "$RELEASE_TAG" "${apks[@]}" "${args[@]}"
           gh release view "$RELEASE_TAG" --json url,assets
