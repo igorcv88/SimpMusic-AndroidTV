@@ -181,6 +181,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import com.maxrave.simpmusic.ui.component.tvHeaderItem
 import com.maxrave.simpmusic.ui.tv.HomeHeaderItem
@@ -196,6 +197,9 @@ import com.maxrave.simpmusic.ui.tv.TvImmersiveHeader
 import com.maxrave.simpmusic.ui.tv.rememberTvHeaderController
 import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocus
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
+import com.maxrave.simpmusic.ui.tv.TvPalette
 import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.eligiblePromos
@@ -1384,14 +1388,29 @@ private fun HomeAccountButton(
             },
         )
     Box {
-        AccountAvatar(
-            signedIn = signedIn,
-            thumbnailUrl = thumbnailUrl,
-            // The Create pill's height, as Apple sizes an avatar like the glass buttons beside it.
-            size = 44.dp,
-            contentDescription = displayName,
-            modifier = Modifier.clickable { menuOpen = true },
-        )
+        if (LocalTvDevice.current) {
+            var focused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .tvFocus(TvFocusStyle.Control, CircleShape)
+                    .onFocusChanged { focused = it.isFocused }
+                    .background(if (focused) TvPalette.FocusFill else Color.Transparent, CircleShape)
+                    .clickable { menuOpen = true }
+                    .padding(if (focused) 4.dp else 0.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                AccountAvatar(signedIn, thumbnailUrl, 44.dp, displayName)
+            }
+        } else {
+            AccountAvatar(
+                signedIn = signedIn,
+                thumbnailUrl = thumbnailUrl,
+                size = 44.dp,
+                contentDescription = displayName,
+                modifier = Modifier.clickable { menuOpen = true },
+            )
+        }
         DropdownMenu(
             expanded = menuOpen,
             onDismissRequest = { menuOpen = false },
