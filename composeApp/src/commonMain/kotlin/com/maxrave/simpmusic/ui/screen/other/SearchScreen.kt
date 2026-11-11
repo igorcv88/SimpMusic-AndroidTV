@@ -141,7 +141,9 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.PodcastDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.ui.tv.tvTextInput
@@ -1080,6 +1082,13 @@ fun SearchScreen(
                 // the status bar once, for the whole stack. Leaving it on either child reserves it
                 // a second time — which is the slab of padding this screen used to show.
                 windowInsets = WindowInsets(0),
+            )
+        }
+        // TV: the Now Playing chip sits above the field, so the player stays one press away.
+        if (tvDevice) {
+            TvNowPlayingChip(
+                onOpen = { navController.navigate(FullscreenDestination) },
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
             )
         }
         // Search Bar with Animated Placeholder

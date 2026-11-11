@@ -174,6 +174,11 @@ import com.maxrave.simpmusic.ui.screen.library.LibraryDynamicPlaylistType
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.desktopPanelDark
 import com.maxrave.simpmusic.ui.theme.typo
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
@@ -309,6 +314,11 @@ fun HomeScreen(
     val reloadDestination by sharedViewModel.reloadDestination.collectAsStateWithLifecycle()
     val pullToRefreshState = rememberPullToRefreshState()
     var isRefreshing by remember { mutableStateOf(false) }
+    val tvDevice = LocalTvDevice.current
+    // TV: UP from the first content row goes to the Now Playing chip (or the profile when nothing is
+    // loaded and the chip is absent), not to whichever top-bar item happens to sit nearest above.
+    val tvChipFocus = remember { FocusRequester() }
+    val tvProfileFocus = remember { FocusRequester() }
     val chipRowState = rememberScrollState()
     val params by viewModel.params.collectAsStateWithLifecycle()
     val homeListState by viewModel.homeListState.collectAsStateWithLifecycle()
@@ -753,6 +763,9 @@ fun HomeScreen(
             state = pullToRefreshState,
             onRefresh = onRefresh,
             isRefreshing = isRefreshing,
+            // A remote has no pull gesture, and UP at the top of the list showed the indicator. On TV,
+            // refreshing stays available by selecting Home again in the rail (reloadDestination).
+            enabled = !tvDevice,
             indicator = {
                 PullToRefreshDefaults.Indicator(
                     state = pullToRefreshState,
@@ -790,7 +803,25 @@ fun HomeScreen(
                     LazyColumn(
                         state = scrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.tvFocusRestorer(),
+                        modifier =
+                            Modifier
+                                .then(
+                                    if (tvDevice) {
+                                        Modifier
+                                            .focusProperties {
+                                                onExit = {
+                                                    if (requestedFocusDirection == FocusDirection.Up) {
+                                                        val moved =
+                                                            tvChipFocus.requestFocus(FocusDirection.Up) ||
+                                                                tvProfileFocus.requestFocus(FocusDirection.Up)
+                                                        if (moved) cancelFocusChange()
+                                                    }
+                                                }
+                                            }.focusGroup()
+                                    } else {
+                                        Modifier
+                                    },
+                                ).tvFocusRestorer(),
                     ) {
                         itemsIndexed(homeShelves, key = { _, item ->
                             item.hashCode().toString() + (mainHomeThumbnail ?: "nothumb")
@@ -1102,7 +1133,7 @@ fun HomeScreen(
                             .height(56.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.padding(start = 16.dp, end = 8.dp)) {
+                    Box(Modifier.padding(start = 16.dp, end = 8.dp).focusRequester(tvProfileFocus)) {
                         HomeAccountButton(
                             accountName = accountInfo?.first,
                             thumbnailUrl = accountInfo?.second,
@@ -1112,7 +1143,7 @@ fun HomeScreen(
                     if (LocalTvDevice.current) {
                         TvNowPlayingChip(
                             onOpen = { navController.navigate(FullscreenDestination) },
-                            modifier = Modifier.padding(end = 8.dp),
+                            modifier = Modifier.padding(end = 8.dp).focusRequester(tvChipFocus),
                         )
                     }
                     BoxWithConstraints(

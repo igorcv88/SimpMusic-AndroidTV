@@ -37,6 +37,7 @@ import simpmusic.composeapp.generated.resources.now_playing
  * The TV's mini player, in Home's top bar beside the profile the way Spotify's TV app places it:
  * the artwork, with "Now Playing" and the track name to its right. OK opens the fullscreen player;
  * holding OK plays or pauses without leaving the page. Draws nothing while nothing is loaded.
+ * Shown in the top bars of Home, Library and Search.
  */
 @Composable
 fun TvNowPlayingChip(

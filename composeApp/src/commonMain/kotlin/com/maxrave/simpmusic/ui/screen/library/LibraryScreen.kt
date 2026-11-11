@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -77,6 +78,9 @@ import com.maxrave.simpmusic.ui.component.LibraryTilingBox
 import com.maxrave.simpmusic.ui.component.taste.ShareTasteSheet
 import com.maxrave.simpmusic.ui.component.taste.TasteCard
 import com.maxrave.simpmusic.ui.component.ListenTogetherIconButton
+import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.component.RippleIconButton
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
@@ -455,27 +459,36 @@ fun LibraryScreen(
                     containerColor = Color.Transparent,
                 ),
             navigationIcon = {
-                AnimatedVisibility(
-                    !accountThumbnail.isNullOrEmpty(),
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    enter = fadeIn() + expandHorizontally(),
-                    exit = fadeOut() + shrinkVertically(),
-                ) {
-                    AsyncImage(
-                        model =
-                            ImageRequest
-                                .Builder(LocalPlatformContext.current)
-                                .data(accountThumbnail)
-                                .crossfade(550)
-                                .build(),
-                        placeholder = rememberVectorPainter(SimpIcons.PeopleAlt),
-                        error = rememberVectorPainter(SimpIcons.PeopleAlt),
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .size(26.dp)
-                                .clip(CircleShape),
-                    )
+                // TV: the Now Playing chip follows the profile, as on Home (Spotify TV's placement).
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AnimatedVisibility(
+                        !accountThumbnail.isNullOrEmpty(),
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        AsyncImage(
+                            model =
+                                ImageRequest
+                                    .Builder(LocalPlatformContext.current)
+                                    .data(accountThumbnail)
+                                    .crossfade(550)
+                                    .build(),
+                            placeholder = rememberVectorPainter(SimpIcons.PeopleAlt),
+                            error = rememberVectorPainter(SimpIcons.PeopleAlt),
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape),
+                        )
+                    }
+                    if (LocalTvDevice.current) {
+                        TvNowPlayingChip(
+                            onOpen = { navController.navigate(FullscreenDestination) },
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
                 }
             },
             // The Library bar had no actions slot at all — added for the Listen Together entry,
