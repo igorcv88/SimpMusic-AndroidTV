@@ -38,6 +38,7 @@ import com.materialkolor.ktx.toColor
 import com.materialkolor.ktx.toHct
 import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 
 @Composable
 fun Chip(
@@ -220,7 +221,7 @@ private fun ChipBody(
 ) {
     CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         ElevatedFilterChip(
-            modifier = if (compact) modifier.height(28.dp) else modifier,
+            modifier = (if (compact) modifier.height(28.dp) else modifier).tvFocusIndicator(),
             shape = CircleShape,
             // No shadow. An unselected chip has no fill, and a drop shadow under a see-through
             // shape shows THROUGH it as a dark ring instead of sitting behind it. Naming

@@ -2,7 +2,6 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -51,6 +50,7 @@ import com.maxrave.simpmusic.ui.theme.ForceDarkContent
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.HomeViewModel
 import kotlinx.coroutines.launch
+import com.maxrave.simpmusic.ui.tv.tvCombinedClickable as combinedClickable
 
 // The large card's target width. Fixed rather than a share of the row, so a wider row fits more
 // large cards instead of the same two stretched wider.

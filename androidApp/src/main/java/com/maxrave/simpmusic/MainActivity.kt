@@ -54,7 +54,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @Suppress("DEPRECATION")
-class MainActivity : AppCompatActivity() {
+open class MainActivity : AppCompatActivity() {
     val viewModel: SharedViewModel by inject()
     val mediaPlayerHandler by inject<MediaPlayerHandler>()
     val dataStoreManager: DataStoreManager by inject()
@@ -254,10 +254,15 @@ class MainActivity : AppCompatActivity() {
         }
         viewModel.getLocation()
 
-        if (!BuildConfig.DEBUG) viewModel.checkOfficialBuild(packageName, signingCertSha256())
-        setContent {
-            App(viewModel)
+        if (checkBuildIdentity()) {
+            setContent { App(viewModel) }
         }
+    }
+
+    /** Distribution-specific policy; the phone retains its original official-build check. */
+    protected open fun checkBuildIdentity(): Boolean {
+        if (!BuildConfig.DEBUG) viewModel.checkOfficialBuild(packageName, signingCertSha256())
+        return true
     }
 
     override fun onDestroy() {

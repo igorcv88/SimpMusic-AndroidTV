@@ -19,7 +19,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -123,6 +122,9 @@ import com.maxrave.simpmusic.ui.screen.player.content.applemusic.rememberAppleMu
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.NowPlayingScreenData
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
@@ -136,6 +138,7 @@ import simpmusic.composeapp.generated.resources.unavailable
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 // The gutter this sheet has always used for its lyrics column.
 private val FULLSCREEN_LYRICS_GUTTER = 50.dp
@@ -383,7 +386,7 @@ fun FullscreenLyricsContent(
                                         .basicMarquee(
                                             iterations = Int.MAX_VALUE,
                                             animationMode = MarqueeAnimationMode.Immediately,
-                                        ).focusable(),
+                                        ).focusable(!LocalTvDevice.current),
                             )
 
                             Spacer(modifier = Modifier.height(2.dp))
@@ -429,7 +432,7 @@ fun FullscreenLyricsContent(
                                             .basicMarquee(
                                                 iterations = Int.MAX_VALUE,
                                                 animationMode = MarqueeAnimationMode.Immediately,
-                                            ).focusable(),
+                                            ).focusable(!LocalTvDevice.current),
                                 )
                             }
                         }
@@ -450,6 +453,7 @@ fun FullscreenLyricsContent(
                         if (screenDataState.lyricsData != null) {
                             IconButton(
                                 onClick = { showShareLyricsSheet = true },
+                                modifier = Modifier.tvFocusIndicator(),
                             ) {
                                 Icon(
                                     imageVector = SimpIcons.Share,
@@ -462,6 +466,7 @@ fun FullscreenLyricsContent(
                         // Three Dot Menu
                         IconButton(
                             onClick = { showNowPlayingSheet = true },
+                            modifier = Modifier.tvFocusIndicator(),
                         ) {
                             Icon(
                                 imageVector = SimpIcons.MoreVert,
@@ -574,6 +579,16 @@ fun FullscreenLyricsContent(
                                                 .padding(top = 3.dp)
                                                 .align(
                                                     Alignment.TopCenter,
+                                                )
+                                                .tvSliderKeys(
+                                                    value = sliderValue / 100f,
+                                                    range = 0f..1f,
+                                                    step = 0.01f,
+                                                    onChange = {
+                                                        sharedViewModel.onUIEvent(
+                                                            UIEvent.UpdateProgress(it * 100f),
+                                                        )
+                                                    },
                                                 ),
                                         track = { sliderState ->
                                             SliderDefaults.Track(
@@ -705,7 +720,8 @@ fun FullscreenLyricsContent(
                                                         .align(Alignment.CenterStart)
                                                         .clip(
                                                             CircleShape,
-                                                        ),
+                                                        )
+                                                        .tvFocusIndicator(),
                                                 onClick = {
                                                     showInfoBottomSheet = true
                                                     showControlButtons = true
@@ -724,7 +740,8 @@ fun FullscreenLyricsContent(
                                                             .aspectRatio(1f)
                                                             .clip(
                                                                 CircleShape,
-                                                            ),
+                                                            )
+                                                            .tvFocusIndicator(),
                                                     onClick = {
                                                         showQueueBottomSheet = true
                                                         showControlButtons = true
@@ -1022,10 +1039,10 @@ private fun FullscreenLyricsDesktopChrome(
                     .liquidGlass(backdrop, RoundedCornerShape(24.dp)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onDismiss) {
+            IconButton(onClick = onDismiss, modifier = Modifier.tvFocusIndicator()) {
                 Icon(imageVector = SimpIcons.Close, contentDescription = "", tint = Color.White)
             }
-            IconButton(onClick = { toggleMiniPlayer() }) {
+            IconButton(onClick = { toggleMiniPlayer() }, modifier = Modifier.tvFocusIndicator()) {
                 Icon(
                     imageVector = SimpIcons.PictureInPictureAlt,
                     contentDescription = "Mini Player",
@@ -1055,6 +1072,7 @@ private fun FullscreenLyricsDesktopChrome(
                         )
                     }
                 },
+                modifier = Modifier.tvFocusIndicator(),
             ) {
                 Icon(
                     imageVector =
@@ -1081,7 +1099,22 @@ private fun FullscreenLyricsDesktopChrome(
                         volumeValue = it
                     },
                     valueRange = 0f..1f,
-                    modifier = Modifier.width(CHROME_VOLUME_SLIDER_WIDTH),
+                    modifier = Modifier.width(CHROME_VOLUME_SLIDER_WIDTH)
+                        .tvSliderKeys(
+                            value = volumeValue,
+                            range = 0f..1f,
+                            step = 0.05f,
+                            onChange = {
+                                isVolumeSliding = true
+                                volumeValue = it
+                            },
+                            onFinished = {
+                                isVolumeSliding = false
+                                sharedViewModel.onUIEvent(
+                                    UIEvent.UpdateVolume(volumeValue.coerceIn(0f, 1f)),
+                                )
+                            },
+                        ),
                     track = { sliderState ->
                         SliderDefaults.Track(
                             modifier =

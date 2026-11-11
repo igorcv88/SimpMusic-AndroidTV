@@ -62,6 +62,7 @@ import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.LogoDev
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import com.maxrave.simpmusic.viewModel.LogInViewModel
 import com.maxrave.simpmusic.viewModel.SettingsViewModel
 import com.maxrave.simpmusic.viewModel.BrowserLoginViewModel
@@ -281,6 +282,7 @@ fun LoginScreen(
                     onClick = {
                         devLoginSheet = true
                     },
+                    modifier = Modifier.tvFocusIndicator(),
                 ) {
                     Icon(
                         SimpIcons.LogoDev,
@@ -358,7 +360,7 @@ internal fun BrowserLoginPanel(
                             onClick = { if (needsFileAccess) onOpenFileAccess() else onSelect(profile) },
                             otherView = if (needsFileAccess) {
                                 {
-                                    TextButton(onClick = onOpenFileAccess, enabled = !busy) {
+                                    TextButton(onClick = onOpenFileAccess, enabled = !busy, modifier = Modifier.tvFocusIndicator()) {
                                         Text(stringResource(Res.string.browser_login_open_settings), color = LocalContentColor.current)
                                     }
                                 }
@@ -392,7 +394,7 @@ internal fun BrowserLoginPanel(
             }
         }
         item(key = "refresh") {
-            TextButton(onClick = onRefresh, enabled = !busy) {
+            TextButton(onClick = onRefresh, enabled = !busy, modifier = Modifier.tvFocusIndicator()) {
                 Text(stringResource(Res.string.browser_login_refresh), color = LocalContentColor.current)
             }
         }

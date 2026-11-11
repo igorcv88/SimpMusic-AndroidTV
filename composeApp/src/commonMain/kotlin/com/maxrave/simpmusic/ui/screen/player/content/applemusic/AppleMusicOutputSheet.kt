@@ -6,7 +6,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -71,6 +70,7 @@ import simpmusic.composeapp.generated.resources.audio_output_playing_here
 import simpmusic.composeapp.generated.resources.audio_output_system_default
 import simpmusic.composeapp.generated.resources.audio_output_usb
 import simpmusic.composeapp.generated.resources.audio_output_wired
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * [AppleMusicOutputSheet] wired straight to the player, for the Now Playing styles that only need

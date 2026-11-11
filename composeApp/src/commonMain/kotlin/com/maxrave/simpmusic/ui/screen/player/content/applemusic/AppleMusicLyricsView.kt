@@ -5,7 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -78,6 +77,7 @@ import simpmusic.composeapp.generated.resources.offline_mode
 import simpmusic.composeapp.generated.resources.rich_synced
 import simpmusic.composeapp.generated.resources.spotify_lyrics_provider
 import simpmusic.composeapp.generated.resources.unsynced
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The LYRICS body: compact header, the app's own [LyricsView] — the SAME renderer the other

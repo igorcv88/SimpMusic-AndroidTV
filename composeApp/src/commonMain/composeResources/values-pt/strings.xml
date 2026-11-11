@@ -580,4 +580,5 @@
     <string name="month_full_oct">Outubro</string>
     <string name="month_full_nov">Novembro</string>
     <string name="month_full_dec">Dezembro</string>
+    <string name="tv_equalizer_controls">Pressione OK para editar a banda; cima/baixo ajusta o ganho; OK ou Voltar conclui.</string>
 </resources>

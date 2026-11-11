@@ -1,12 +1,13 @@
 package com.maxrave.simpmusic.ui.screen.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +50,9 @@ import com.maxrave.simpmusic.ui.icon.Check
 import com.maxrave.simpmusic.ui.icon.KeyboardArrowDown
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.EQUALIZER_BAND_LABELS
 import com.maxrave.simpmusic.viewModel.SettingsViewModel
 import org.jetbrains.compose.resources.stringResource
@@ -56,7 +63,9 @@ import simpmusic.composeapp.generated.resources.equalizer_preamp
 import simpmusic.composeapp.generated.resources.equalizer_preset_custom
 import simpmusic.composeapp.generated.resources.equalizer_presets
 import simpmusic.composeapp.generated.resources.equalizer_reset
+import simpmusic.composeapp.generated.resources.tv_equalizer_controls
 import kotlin.math.roundToInt
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /** Gain limits, in dB. Past this it stops being tone shaping and starts being distortion. */
 private const val BAND_RANGE_DB = 12f
@@ -219,7 +228,14 @@ fun EqualizerSection(viewModel: SettingsViewModel = koinViewModel()) {
                 // there in mpv, which drains and re-creates its whole audio filter graph to take it.
                 onValueChangeFinished = { draftPreamp?.let(viewModel::setEqualizerPreamp) },
                 valueRange = PREAMP_MIN_DB..0f,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f)
+                    .tvSliderKeys(
+                        value = draftPreamp ?: preamp,
+                        range = PREAMP_MIN_DB..0f,
+                        step = 1f,
+                        onChange = { draftPreamp = it.roundToInt().toFloat() },
+                        onFinished = { draftPreamp?.let(viewModel::setEqualizerPreamp) },
+                    ),
             )
             Text(
                 text = "${(draftPreamp ?: preamp).roundToInt()} dB",
@@ -281,12 +297,16 @@ fun EqualizerSection(viewModel: SettingsViewModel = koinViewModel()) {
                 }
             }
 
+            if (LocalTvDevice.current) {
+                Text(stringResource(Res.string.tv_equalizer_controls), style = typo().bodySmall)
+            }
+
             // Bottom right, the way a dialog puts its action — it applies to the whole block above.
             Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.End,
             ) {
-            OutlinedButton(onClick = { viewModel.resetEqualizer() }) {
+            OutlinedButton(onClick = { viewModel.resetEqualizer() }, modifier = Modifier.tvFocusIndicator()) {
                 Text(text = stringResource(Res.string.equalizer_reset), style = typo().labelMedium)
             }
             }
@@ -383,7 +403,33 @@ private fun EqualizerCurve(
                 drawPath(line, curveColor, style = Stroke(width = 3f))
                 points.forEach { drawCircle(curveColor, radius = 7f, center = it) }
             },
-    )
+    ) {
+        if (LocalTvDevice.current) {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
+                repeat(count) { index ->
+                    Box(
+                        Modifier
+                            .width(22.dp)
+                            .fillMaxHeight()
+                            .semantics {
+                                contentDescription = EQUALIZER_BAND_LABELS[index]
+                                stateDescription = "${shown.getOrElse(index) { 0f }.roundToInt()} dB"
+                            }
+                            .tvSliderKeys(
+                                value = shown.getOrElse(index) { 0f },
+                                range = -BAND_RANGE_DB..BAND_RANGE_DB,
+                                step = 1f,
+                                onChange = { gain -> draft = List(count) { if (it == index) gain else shown.getOrElse(it) { 0f } } },
+                                onFinished = { draft?.let(commit) },
+                                customSurface = true,
+                                vertical = true,
+                                activationRequired = true,
+                            ),
+                    )
+                }
+            }
+        }
+    }
 }
 
 /** Map a gain in dB to a y coordinate, +12 dB at the top and −12 dB at the bottom. */

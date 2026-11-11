@@ -6,14 +6,19 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: "debug (installs on the TV) or release (opens on the unofficial-build screen)"
+        description: "debug (installs on the TV) or release (checks the TV certificate)"
         type: choice
         options: [debug, release]
         default: debug
   pull_request:
     paths:
       - 'tools/**'
-      - 'androidApp/build.gradle.kts'
+      - 'androidApp/**'
+      - 'tvAndroidApp/**'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'composeApp/**'
+      - 'gradle/**'
       - '.github/workflows/tv-apk.yml'
 
 permissions:
@@ -37,6 +42,24 @@ jobs:
 
       - name: Run the tests
         run: tools/venv/bin/python -m unittest discover -s tools/tests
+
+  build-validation:
+    name: TV and phone debug builds
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: microsoft
+          cache: gradle
+      - name: Build both entry points and check TV resources
+        run: |
+          chmod +x gradlew
+          ./gradlew :tvAndroidApp:assembleDebug :androidApp:assembleDebug :tvAndroidApp:lintDebug --no-daemon --max-workers=2
 
   signed-apk:
     name: Signed ${{ inputs.build_type }} APK
@@ -72,7 +95,7 @@ jobs:
       - name: Build
         run: |
           chmod +x gradlew
-          task=":androidApp:assemble${BUILD_TYPE^}"
+          task=":tvAndroidApp:assemble${BUILD_TYPE^}"
           ./gradlew "$task" "-PtvSigning=$RUNNER_TEMP/tv-signing.properties" --no-daemon
         env:
           BUILD_TYPE: ${{ inputs.build_type }}
@@ -81,7 +104,7 @@ jobs:
         run: |
           apksigner="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
           cd tools
-          for apk in ../androidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk; do
+          for apk in ../tvAndroidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk; do
             python3 -c "import sys, tv_signing; tv_signing.verify_apk(sys.argv[1], sys.argv[2]); print(sys.argv[1], 'OK')" "$apk" "$apksigner"
           done
 
@@ -92,5 +115,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: simpmusic-tv-${{ inputs.build_type }}-${{ github.sha }}
-          path: androidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk
+          path: tvAndroidApp/build/outputs/apk/${{ inputs.build_type }}/*.apk
           if-no-files-found: error

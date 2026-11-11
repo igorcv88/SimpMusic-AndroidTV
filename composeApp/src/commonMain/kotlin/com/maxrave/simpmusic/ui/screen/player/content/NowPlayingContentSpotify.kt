@@ -22,7 +22,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -160,6 +159,11 @@ import com.maxrave.simpmusic.ui.screen.player.content.applemusic.AudioOutputShee
 import com.maxrave.simpmusic.ui.theme.blackMoreOverlay
 import com.maxrave.simpmusic.ui.theme.overlay
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvInitialFocus
+import com.maxrave.simpmusic.ui.tv.tvSliderKeys
 import com.maxrave.simpmusic.viewModel.LyricsProvider
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.delay
@@ -193,6 +197,7 @@ import simpmusic.composeapp.generated.resources.show
 import simpmusic.composeapp.generated.resources.spotify_lyrics_provider
 import simpmusic.composeapp.generated.resources.unsynced
 import simpmusic.composeapp.generated.resources.view_count
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 // stripRichSyncTimestamps() lives in NowPlayingContentState.kt (same package) so both
 // content styles share one copy.
@@ -677,9 +682,7 @@ fun NowPlayingContentSpotify(
                                                                 IconButton(
                                                                     onClick = {
                                                                         actions.onEnterFullscreenVideo()
-                                                                    },
-                                                                    Modifier.align(Alignment.TopEnd),
-                                                                ) {
+                                                                    }, Modifier.align(Alignment.TopEnd).tvFocusIndicator()) {
                                                                     Icon(
                                                                         imageVector = SimpIcons.Fullscreen,
                                                                         contentDescription = "",
@@ -701,7 +704,8 @@ fun NowPlayingContentSpotify(
                                                                             Modifier
                                                                                 .size(48.dp)
                                                                                 .aspectRatio(1f)
-                                                                                .clip(CircleShape),
+                                                                                .clip(CircleShape)
+                                                                                .tvFocusIndicator(),
                                                                         onClick = {
                                                                             actions.onUIEvent(UIEvent.Backward)
                                                                         },
@@ -725,7 +729,8 @@ fun NowPlayingContentSpotify(
                                                                             Modifier
                                                                                 .size(48.dp)
                                                                                 .aspectRatio(1f)
-                                                                                .clip(CircleShape),
+                                                                                .clip(CircleShape)
+                                                                                .tvFocusIndicator(),
                                                                         onClick = {
                                                                             actions.onUIEvent(UIEvent.Forward)
                                                                         },
@@ -745,9 +750,7 @@ fun NowPlayingContentSpotify(
                                                                     IconButton(
                                                                         onClick = {
                                                                             internalShowSubtitle = !internalShowSubtitle
-                                                                        },
-                                                                        Modifier.align(Alignment.BottomEnd),
-                                                                    ) {
+                                                                        }, Modifier.align(Alignment.BottomEnd).tvFocusIndicator()) {
                                                                         Icon(
                                                                             imageVector =
                                                                                 if (internalShowSubtitle) {
@@ -888,14 +891,14 @@ fun NowPlayingContentSpotify(
                                         .basicMarquee(
                                             iterations = Int.MAX_VALUE,
                                             animationMode = MarqueeAnimationMode.Immediately,
-                                        ).focusable(),
+                                        ).focusable(!LocalTvDevice.current),
                             )
                         }
                     },
                     navigationIcon = {
                         IconButton(onClick = {
                             actions.onDismiss()
-                        }) {
+                        }, modifier = Modifier.tvFocusIndicator().tvInitialFocus()) {
                             Icon(
                                 imageVector = state.dismissIcon,
                                 contentDescription = "",
@@ -906,7 +909,7 @@ fun NowPlayingContentSpotify(
                     actions = {
                         IconButton(onClick = {
                             actions.onShowMoreSheet()
-                        }) {
+                        }, modifier = Modifier.tvFocusIndicator()) {
                             Icon(
                                 imageVector = SimpIcons.MoreVert,
                                 contentDescription = "",
@@ -1007,7 +1010,7 @@ fun NowPlayingContentSpotify(
                                                 .basicMarquee(
                                                     iterations = Int.MAX_VALUE,
                                                     animationMode = MarqueeAnimationMode.Immediately,
-                                                ).focusable(),
+                                                ).focusable(!LocalTvDevice.current),
                                     )
                                 }
                             }
@@ -1067,7 +1070,8 @@ fun NowPlayingContentSpotify(
                                                         Modifier
                                                             .size(24.dp)
                                                             .aspectRatio(1f)
-                                                            .clip(CircleShape),
+                                                            .clip(CircleShape)
+                                                            .tvFocusIndicator(),
                                                     onClick = {
                                                         actions.onShowInfo()
                                                     },
@@ -1084,7 +1088,8 @@ fun NowPlayingContentSpotify(
                                                         Modifier
                                                             .size(24.dp)
                                                             .aspectRatio(1f)
-                                                            .clip(CircleShape),
+                                                            .clip(CircleShape)
+                                                            .tvFocusIndicator(),
                                                     onClick = { showOutputSheet = true },
                                                 ) {
                                                     Icon(
@@ -1120,7 +1125,8 @@ fun NowPlayingContentSpotify(
                                                         modifier =
                                                             Modifier
                                                                 .requiredSize(28.dp)
-                                                                .clip(CircleShape),
+                                                                .clip(CircleShape)
+                                                                .tvFocusIndicator(),
                                                         onClick = {
                                                             actions.onShowComments()
                                                         },
@@ -1144,7 +1150,8 @@ fun NowPlayingContentSpotify(
                                                         Modifier
                                                             .size(24.dp)
                                                             .aspectRatio(1f)
-                                                            .clip(CircleShape),
+                                                            .clip(CircleShape)
+                                                            .tvFocusIndicator(),
                                                     onClick = {
                                                         actions.onShowAddToPlaylist()
                                                     },
@@ -1162,7 +1169,8 @@ fun NowPlayingContentSpotify(
                                                         Modifier
                                                             .size(24.dp)
                                                             .aspectRatio(1f)
-                                                            .clip(CircleShape),
+                                                            .clip(CircleShape)
+                                                            .tvFocusIndicator(),
                                                     onClick = {
                                                         actions.onShowQueue()
                                                     },
@@ -1249,7 +1257,7 @@ fun NowPlayingContentSpotify(
                                                                     .basicMarquee(
                                                                         iterations = Int.MAX_VALUE,
                                                                         animationMode = MarqueeAnimationMode.Immediately,
-                                                                    ).focusable(),
+                                                                    ).focusable(!LocalTvDevice.current),
                                                             text = lineText,
                                                             style = typo().bodyMedium,
                                                             color = Color.White,
@@ -1273,7 +1281,7 @@ fun NowPlayingContentSpotify(
                                                                         .basicMarquee(
                                                                             iterations = Int.MAX_VALUE,
                                                                             animationMode = MarqueeAnimationMode.Immediately,
-                                                                        ).focusable(),
+                                                                        ).focusable(!LocalTvDevice.current),
                                                                 text = translatedLineText,
                                                                 alignmentText = lineText,
                                                                 style = typo().bodyMedium,
@@ -1335,6 +1343,7 @@ fun NowPlayingContentSpotify(
                                                     onClick = {
                                                         actions.onShowVoteDialog()
                                                     },
+                                                    modifier = Modifier.tvFocusIndicator(),
                                                 ) {
                                                     Icon(
                                                         imageVector = SimpIcons.ThumbsUpDown,
@@ -1350,6 +1359,7 @@ fun NowPlayingContentSpotify(
                                             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                                                 IconButton(
                                                     onClick = { showLyricsOffsetBar = !showLyricsOffsetBar },
+                                                    modifier = Modifier.tvFocusIndicator(),
                                                 ) {
                                                     Icon(
                                                         imageVector = SimpIcons.AvTimer,
@@ -1364,6 +1374,7 @@ fun NowPlayingContentSpotify(
                                         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                                             IconButton(
                                                 onClick = { showShareLyricsSheet = true },
+                                                modifier = Modifier.tvFocusIndicator(),
                                             ) {
                                                 Icon(
                                                     imageVector = SimpIcons.Share,
@@ -1383,7 +1394,8 @@ fun NowPlayingContentSpotify(
                                                 modifier =
                                                     Modifier
                                                         .height(20.dp)
-                                                        .wrapContentWidth(),
+                                                        .wrapContentWidth()
+                                                        .tvFocusIndicator(),
                                             ) {
                                                 Text(text = stringResource(Res.string.show), color = Color.White)
                                             }
@@ -1703,11 +1715,11 @@ fun NowPlayingContentSpotify(
                                             ).basicMarquee(
                                                 iterations = Int.MAX_VALUE,
                                                 animationMode = MarqueeAnimationMode.Immediately,
-                                            ).focusable(),
+                                            ).focusable(!LocalTvDevice.current),
                                 )
                                 val artistRowState = rememberLazyListState()
                                 LazyRow(
-                                    modifier = Modifier.mouseDragScroll(artistRowState),
+                                    modifier = Modifier.mouseDragScroll(artistRowState).tvFocusRestorer(),
                                     state = artistRowState,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -1737,7 +1749,7 @@ fun NowPlayingContentSpotify(
                                                     ).basicMarquee(
                                                         iterations = Int.MAX_VALUE,
                                                         animationMode = MarqueeAnimationMode.Immediately,
-                                                    ).focusable(),
+                                                    ).focusable(!LocalTvDevice.current),
                                         )
                                     }
                                 }
@@ -1870,12 +1882,12 @@ internal fun NowPlayingTrackInfoRow(
                         .basicMarquee(
                             iterations = Int.MAX_VALUE,
                             animationMode = MarqueeAnimationMode.Immediately,
-                        ).focusable(),
+                        ).focusable(!LocalTvDevice.current),
             )
             Spacer(modifier = Modifier.height(3.dp))
             val artistRowState = rememberLazyListState()
             LazyRow(
-                modifier = Modifier.fillMaxWidth().mouseDragScroll(artistRowState),
+                modifier = Modifier.fillMaxWidth().mouseDragScroll(artistRowState).tvFocusRestorer(),
                 state = artistRowState,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1903,7 +1915,7 @@ internal fun NowPlayingTrackInfoRow(
                                 .basicMarquee(
                                     iterations = Int.MAX_VALUE,
                                     animationMode = MarqueeAnimationMode.Immediately,
-                                ).focusable()
+                                ).focusable(!LocalTvDevice.current)
                                 .clickable {
                                     actions.onNavigateToArtist()
                                 },
@@ -1924,7 +1936,8 @@ internal fun NowPlayingTrackInfoRow(
                                 .aspectRatio(1f)
                                 .clip(
                                     CircleShape,
-                                ),
+                                )
+                                .tvFocusIndicator(),
                         onClick = {
                             actions.onAddToYouTubeLiked()
                         },
@@ -1939,7 +1952,8 @@ internal fun NowPlayingTrackInfoRow(
                                 .aspectRatio(1f)
                                 .clip(
                                     CircleShape,
-                                ),
+                                )
+                                .tvFocusIndicator(),
                         onClick = {
                             actions.onAddToYouTubeLiked()
                         },
@@ -2052,6 +2066,17 @@ internal fun ColumnScope.SpotifyPlaybackControls(
                         .padding(top = 3.dp)
                         .align(
                             Alignment.TopCenter,
+                        )
+                        .tvSliderKeys(
+                            value = state.sliderValue / 100f,
+                            range = 0f..1f,
+                            step = 0.01f,
+                            onChange = {
+                                actions.onSliderChange(it * 100f)
+                            },
+                            onFinished = {
+                                actions.onSliderChangeFinished()
+                            },
                         ),
                 track = { sliderState ->
                     SliderDefaults.Track(

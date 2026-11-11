@@ -13,7 +13,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -112,12 +111,14 @@ import com.maxrave.simpmusic.ui.screen.player.content.applemusic.rememberAppleMu
 import com.maxrave.simpmusic.ui.screen.player.content.applemusic.rememberAppleMusicTypography
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import com.maxrave.simpmusic.viewModel.NowPlayingScreenData
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.math.pow
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 /**
  * The Apple Music Now Playing style: a style-internal dock (Lyrics · [Output | Listen Together] ·
@@ -1085,7 +1086,7 @@ private fun AppleMusicArtworkPage(
                                     ) {
                                         IconButton(
                                             onClick = { actions.onEnterFullscreenVideo() },
-                                            modifier = Modifier.align(Alignment.TopEnd),
+                                            modifier = Modifier.align(Alignment.TopEnd).tvFocusIndicator(),
                                         ) {
                                             Icon(imageVector = SimpIcons.Fullscreen, contentDescription = "", tint = Color.White)
                                         }
@@ -1096,7 +1097,7 @@ private fun AppleMusicArtworkPage(
                                             ) {
                                                 IconButton(
                                                     onClick = { actions.onUIEvent(UIEvent.Backward) },
-                                                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                                                    modifier = Modifier.size(48.dp).clip(CircleShape).tvFocusIndicator(),
                                                 ) {
                                                     Icon(
                                                         imageVector = SimpIcons.Replay5,
@@ -1107,7 +1108,7 @@ private fun AppleMusicArtworkPage(
                                                 }
                                                 IconButton(
                                                     onClick = { actions.onUIEvent(UIEvent.Forward) },
-                                                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                                                    modifier = Modifier.size(48.dp).clip(CircleShape).tvFocusIndicator(),
                                                 ) {
                                                     Icon(
                                                         imageVector = SimpIcons.Forward5,
@@ -1121,7 +1122,7 @@ private fun AppleMusicArtworkPage(
                                         if (state.screenData.lyricsData != null) {
                                             IconButton(
                                                 onClick = { onToggleSubtitle() },
-                                                modifier = Modifier.align(Alignment.BottomEnd),
+                                                modifier = Modifier.align(Alignment.BottomEnd).tvFocusIndicator(),
                                             ) {
                                                 Icon(
                                                     imageVector = if (showSubtitle) SimpIcons.SubtitlesOff else SimpIcons.Subtitles,

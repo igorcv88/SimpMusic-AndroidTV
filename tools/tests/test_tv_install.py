@@ -10,7 +10,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import tv_install  # noqa: E402
 
-PACKAGE = "com.maxrave.simpmusic.dev"
+PACKAGE = "com.maxrave.simpmusic.tv"
 
 
 class FakeDevice:
@@ -40,33 +40,39 @@ class PickTest(unittest.TestCase):
         return tv_install.built_apks("debug", Path(tmp.name))
 
     def test_the_split_for_the_tvs_first_abi_wins(self):
-        apks = self.apks(["androidApp-arm64-v8a-debug.apk", "androidApp-armeabi-v7a-debug.apk",
-                          "androidApp-universal-debug.apk"])
-        self.assertEqual(tv_install.pick_apk(apks, "armeabi-v7a,armeabi").name, "androidApp-armeabi-v7a-debug.apk")
-        self.assertEqual(tv_install.pick_apk(apks, "arm64-v8a,armeabi-v7a").name, "androidApp-arm64-v8a-debug.apk")
+        apks = self.apks(["tvAndroidApp-arm64-v8a-debug.apk", "tvAndroidApp-armeabi-v7a-debug.apk",
+                          "tvAndroidApp-universal-debug.apk"])
+        self.assertEqual(tv_install.pick_apk(apks, "armeabi-v7a,armeabi").name, "tvAndroidApp-armeabi-v7a-debug.apk")
+        self.assertEqual(tv_install.pick_apk(apks, "arm64-v8a,armeabi-v7a").name, "tvAndroidApp-arm64-v8a-debug.apk")
 
     def test_the_universal_apk_when_no_split_fits(self):
-        apks = self.apks(["androidApp-arm64-v8a-debug.apk", "androidApp-universal-debug.apk"])
-        self.assertEqual(tv_install.pick_apk(apks, "x86").name, "androidApp-universal-debug.apk")
+        apks = self.apks(["tvAndroidApp-arm64-v8a-debug.apk", "tvAndroidApp-universal-debug.apk"])
+        self.assertEqual(tv_install.pick_apk(apks, "x86").name, "tvAndroidApp-universal-debug.apk")
 
     def test_a_build_without_splits_is_the_universal_apk(self):
-        apks = self.apks(["androidApp-debug.apk"])
-        self.assertEqual(tv_install.pick_apk(apks, "arm64-v8a").name, "androidApp-debug.apk")
+        apks = self.apks(["tvAndroidApp-debug.apk"])
+        self.assertEqual(tv_install.pick_apk(apks, "arm64-v8a").name, "tvAndroidApp-debug.apk")
 
     def test_nothing_built_is_none(self):
         self.assertIsNone(tv_install.pick_apk(self.apks([]), "arm64-v8a"))
 
 
 class GradleTest(unittest.TestCase):
+    def test_both_variants_install_beside_the_phone_package(self):
+        self.assertEqual(tv_install.PACKAGES, {
+            "debug": "com.maxrave.simpmusic.tv", "release": "com.maxrave.simpmusic.tv",
+        })
+        self.assertEqual(tv_install.APK_DIR, ROOT / "tvAndroidApp" / "build" / "outputs" / "apk")
+
     def test_the_signing_file_reaches_gradle_as_a_property(self):
         command = tv_install.gradle_command("debug", Path("/tmp/x/tv-signing.properties"))
-        self.assertEqual(command[1:], [":androidApp:assembleDebug", "-PtvSigning=" + str(Path("/tmp/x/tv-signing.properties"))])
+        self.assertEqual(command[1:], [":tvAndroidApp:assembleDebug", "-PtvSigning=" + str(Path("/tmp/x/tv-signing.properties"))])
         self.assertIn("-PisFullBuild=true", tv_install.gradle_command("release", Path("p"), full=True))
 
 
 class InstallTest(unittest.TestCase):
     def setUp(self):
-        self.apk = Path("androidApp-arm64-v8a-debug.apk")
+        self.apk = Path("tvAndroidApp-arm64-v8a-debug.apk")
 
     def test_success_installs_and_cleans_up(self):
         dev = FakeDevice(["Success\n"])

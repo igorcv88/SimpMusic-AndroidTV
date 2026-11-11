@@ -13,7 +13,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -170,10 +169,15 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PodcastDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.login.LoginDestination
+import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.screen.library.LibraryDynamicPlaylistType
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.desktopPanelDark
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.eligiblePromos
 import com.maxrave.simpmusic.utils.osRequirementOf
@@ -237,6 +241,7 @@ import simpmusic.composeapp.generated.resources.top_artists
 import simpmusic.composeapp.generated.resources.warning
 import simpmusic.composeapp.generated.resources.what_is_best_choice_today
 import simpmusic.composeapp.generated.resources.workout
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 // DataStore key for blog-promo one-shot dialog. Bump the suffix (v2, v3, …) to re-promote.
 private const val BLOG_PROMO_KEY = "blog_promo_v1_seen"
@@ -718,14 +723,18 @@ fun HomeScreen(
                 TextButton(onClick = {
                     viewModel.doneShowLogInAlert(doNotShowAgain)
                     navController.navigate(LoginDestination)
-                }) {
+                },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(Res.string.go_to_log_in_page))
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     viewModel.doneShowLogInAlert(doNotShowAgain)
-                }) {
+                },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(Res.string.cancel))
                 }
             },
@@ -781,6 +790,7 @@ fun HomeScreen(
                     LazyColumn(
                         state = scrollState,
                         verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.tvFocusRestorer(),
                     ) {
                         itemsIndexed(homeShelves, key = { _, item ->
                             item.hashCode().toString() + (mainHomeThumbnail ?: "nothumb")
@@ -1099,6 +1109,12 @@ fun HomeScreen(
                             navController = navController,
                         )
                     }
+                    if (LocalTvDevice.current) {
+                        TvNowPlayingChip(
+                            onOpen = { navController.navigate(FullscreenDestination) },
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
                     BoxWithConstraints(
                         Modifier
                             .weight(1f)
@@ -1285,7 +1301,8 @@ private fun HomeAccountButton(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .tvFocusIndicator(),
                 ) {
                     Text(stringResource(Res.string.log_in_to_YouTube), color = LocalContentColor.current)
                 }
@@ -1568,7 +1585,7 @@ fun ChartData(
             val lazyListState = rememberLazyListState()
             val snapperFlingBehavior = rememberSnapFlingBehavior(SnapLayoutInfoProvider(lazyListState = lazyListState))
             LazyRow(
-                modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior),
+                modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior).tvFocusRestorer(),
                 state = lazyListState,
                 flingBehavior = snapperFlingBehavior,
             ) {

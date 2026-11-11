@@ -10,7 +10,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.WindowInsets
@@ -142,6 +141,10 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.PodcastDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.theme.LocalLiquidGlassEnabled
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
+import com.maxrave.simpmusic.ui.tv.tvTextInput
 import com.maxrave.simpmusic.viewModel.SearchScreenUIState
 import com.maxrave.simpmusic.viewModel.SearchType
 import com.maxrave.simpmusic.viewModel.SearchViewModel
@@ -174,6 +177,7 @@ import simpmusic.composeapp.generated.resources.search_for_songs_artists_albums_
 import simpmusic.composeapp.generated.resources.song
 import simpmusic.composeapp.generated.resources.videos
 import simpmusic.composeapp.generated.resources.what_do_you_want_to_listen_to
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,6 +201,13 @@ fun SearchScreen(
     var isExpanded by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
+    val tvDevice = LocalTvDevice.current
+    LaunchedEffect(Unit) {
+        if (tvDevice && searchText.isEmpty()) {
+            focusRequester.requestFocus()
+            keyboardController?.show()
+        }
+    }
 
     var isFocused by rememberSaveable { mutableStateOf(false) }
 
@@ -436,7 +447,7 @@ fun SearchScreen(
             when (it) {
                 SearchUIType.SEARCH_SUGGESTIONS -> {
                     LazyColumn(
-                        Modifier.padding(horizontal = 16.dp),
+                        Modifier.padding(horizontal = 16.dp).tvFocusRestorer(),
                         state = suggestionsState,
                         contentPadding = PaddingValues(top = searchBarHeight, bottom = 10.dp),
                     ) {
@@ -522,6 +533,7 @@ fun SearchScreen(
                                         searchText = suggestion
                                         focusRequester.requestFocus()
                                     },
+                                    modifier = Modifier.tvFocusIndicator(),
                                 ) {
                                     Icon(
                                         imageVector = SimpIcons.ArrowOutward,
@@ -550,6 +562,7 @@ fun SearchScreen(
                         LazyColumn(
                             state = historyState,
                             contentPadding = PaddingValues(top = searchBarHeight, bottom = 10.dp),
+                            modifier = Modifier.tvFocusRestorer(),
                         ) {
                             stickyHeader {
                                 Crossfade(
@@ -564,6 +577,7 @@ fun SearchScreen(
                                         ) {
                                             TextButton(
                                                 onClick = { searchViewModel.deleteSearchHistory() },
+                                                modifier = Modifier.tvFocusIndicator(),
                                             ) {
                                                 Text(
                                                     text = stringResource(Res.string.clear_search_history),
@@ -613,6 +627,7 @@ fun SearchScreen(
                                             searchText = historyItem
                                             focusRequester.requestFocus()
                                         },
+                                        modifier = Modifier.tvFocusIndicator(),
                                     ) {
                                         Icon(
                                             imageVector = SimpIcons.ArrowOutward,
@@ -651,7 +666,8 @@ fun SearchScreen(
                                 Modifier
                                     .fillMaxHeight()
                                     .widthIn(max = 1100.dp)
-                                    .padding(horizontal = 16.dp),
+                                    .padding(horizontal = 16.dp)
+                                    .tvFocusRestorer(),
                             state = moodGridState,
                             contentPadding = PaddingValues(top = searchBarHeight),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -782,6 +798,7 @@ fun SearchScreen(
                                                     top = searchBarHeight,
                                                     bottom = 10.dp,
                                                 ),
+                                            modifier = Modifier.tvFocusRestorer(),
                                         ) {
                                             items(10) {
                                                 ShimmerSearchItem()
@@ -816,6 +833,7 @@ fun SearchScreen(
                                                                 bottom = 10.dp,
                                                             ),
                                                         state = resultsState,
+                                                        modifier = Modifier.tvFocusRestorer(),
                                                     ) {
                                                         items(currentResults) { result ->
                                                             when (result) {
@@ -984,7 +1002,7 @@ fun SearchScreen(
                                                     if (searchText.isNotEmpty()) {
                                                         searchViewModel.searchAll(searchText)
                                                     }
-                                                }) {
+                                                }, modifier = Modifier.tvFocusIndicator()) {
                                                     Text(text = stringResource(Res.string.retry))
                                                 }
                                             }
@@ -1068,6 +1086,7 @@ fun SearchScreen(
         SearchBar(
             inputField = {
                 SearchBarDefaults.InputField(
+                    modifier = Modifier.then(if (tvDevice) Modifier.focusRequester(focusRequester) else Modifier).tvTextInput(),
                     query = searchText,
                     onQueryChange = { newText ->
                         searchText = newText
@@ -1136,6 +1155,7 @@ fun SearchScreen(
                                     IconButton(
                                         onClick = dismissSearchPanel,
                                         enabled = isSearchPanelVisible,
+                                        modifier = Modifier.tvFocusIndicator(),
                                     ) {
                                         Icon(
                                             imageVector = SimpIcons.ArrowBackIosNew,
@@ -1155,7 +1175,7 @@ fun SearchScreen(
                         // X button only shows when there's text
                         if (searchText.isNotEmpty()) {
                             IconButton(
-                                modifier = Modifier.clip(CircleShape),
+                                modifier = Modifier.clip(CircleShape).tvFocusIndicator(),
                                 onClick = {
                                     searchText = ""
                                     isSearchSubmitted = false
@@ -1169,7 +1189,7 @@ fun SearchScreen(
                         } else if (getPlatform() == Platform.Android) {
                             // An empty field offers song recognition instead (Android only).
                             IconButton(
-                                modifier = Modifier.clip(CircleShape),
+                                modifier = Modifier.clip(CircleShape).tvFocusIndicator(),
                                 onClick = { showRecognition = true },
                             ) {
                                 Icon(
@@ -1186,7 +1206,7 @@ fun SearchScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester)
+                    .then(if (!tvDevice) Modifier.focusRequester(focusRequester) else Modifier)
                     .onFocusChanged {
                         isFocused = it.isFocused
                     }.padding(horizontal = 16.dp),

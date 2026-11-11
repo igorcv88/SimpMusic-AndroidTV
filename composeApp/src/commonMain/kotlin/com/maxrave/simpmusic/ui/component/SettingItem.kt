@@ -1,7 +1,6 @@
 package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -35,6 +34,8 @@ import com.maxrave.simpmusic.extension.greyScale
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
 import com.maxrave.simpmusic.ui.theme.typo
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
 
 @Composable
 fun SettingItem(
@@ -130,7 +131,7 @@ fun SettingItem(
             if (switch != null) {
                 Spacer(Modifier.width(10.dp))
                 Switch(
-                    modifier = Modifier.wrapContentWidth(),
+                    modifier = Modifier.wrapContentWidth().tvFocusIndicator(),
                     checked = switch.first,
                     onCheckedChange = {
                         switch.second.invoke(it)
