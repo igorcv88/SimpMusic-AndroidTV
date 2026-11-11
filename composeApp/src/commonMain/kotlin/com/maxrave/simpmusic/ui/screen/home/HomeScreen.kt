@@ -19,6 +19,8 @@ import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,6 +63,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -179,7 +182,18 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import com.maxrave.simpmusic.ui.component.tvHeaderItem
+import com.maxrave.simpmusic.ui.tv.HomeHeaderItem
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.LocalTvHeaderController
+import com.maxrave.simpmusic.ui.tv.ProvideTvColumnScrolling
+import com.maxrave.simpmusic.ui.tv.TvAmbientBackground
+import com.maxrave.simpmusic.ui.tv.TvColumnItem
+import com.maxrave.simpmusic.ui.tv.TvDimens
+import com.maxrave.simpmusic.ui.tv.TvHeaderController
+import com.maxrave.simpmusic.ui.tv.TvHeaderTintEffect
+import com.maxrave.simpmusic.ui.tv.TvImmersiveHeader
+import com.maxrave.simpmusic.ui.tv.rememberTvHeaderController
 import com.maxrave.simpmusic.ui.tv.TvNowPlayingChip
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import com.maxrave.simpmusic.ui.tv.tvFocusRestorer
@@ -319,6 +333,19 @@ fun HomeScreen(
     // loaded and the chip is absent), not to whichever top-bar item happens to sit nearest above.
     val tvChipFocus = remember { FocusRequester() }
     val tvProfileFocus = remember { FocusRequester() }
+    // TV: the immersive header shows the card focus has rested on (TvHeaderController), and the
+    // first card of the page until focus has rested anywhere.
+    val tvHeader = if (tvDevice) rememberTvHeaderController() else null
+    val tvHeaderFallback =
+        remember(tvDevice, homeShelves) {
+            if (tvDevice) {
+                homeShelves.firstNotNullOfOrNull { shelf -> shelf.contents.firstOrNull { it != null } }?.tvHeaderItem()
+            } else {
+                null
+            }
+        }
+    // TV: sections that are not full-bleed rows keep to the safe area.
+    val tvSectionInset = if (tvDevice) Modifier.padding(horizontal = TvDimens.SafeHorizontal) else Modifier
     val chipRowState = rememberScrollState()
     val params by viewModel.params.collectAsStateWithLifecycle()
     val homeListState by viewModel.homeListState.collectAsStateWithLifecycle()
@@ -755,10 +782,16 @@ fun HomeScreen(
     }
 
     Box {
+        if (tvHeader != null) TvHomeBackdrop(tvHeader, tvHeaderFallback)
         PullToRefreshBox(
             modifier =
                 Modifier
-                    .then(if (LocalLiquidGlassEnabled.current) Modifier.layerBackdrop(chipBackdrop) else Modifier)
+                    // TV: the list lives below the pinned header, in a viewport of its own, so the
+                    // 25% keyline is measured inside what is left and rows scroll under nothing.
+                    .then(if (tvDevice) Modifier.padding(top = TvDimens.ImmersiveHeaderHeight) else Modifier)
+                    // TV draws the top bar flat (it sits on the header, not on this list), so nothing
+                    // there reads the recording.
+                    .then(if (LocalLiquidGlassEnabled.current && !tvDevice) Modifier.layerBackdrop(chipBackdrop) else Modifier)
                     .hazeSource(hazeState),
             state = pullToRefreshState,
             onRefresh = onRefresh,
@@ -800,9 +833,13 @@ fun HomeScreen(
                         )
                         return@Crossfade
                     }
+                    // Not re-indented, to keep the diff against upstream to the lines that changed.
+                    TvHomeList(tvHeader) {
                     LazyColumn(
                         state = scrollState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (tvDevice) TvDimens.RowGap - 16.dp else 8.dp),
+                        contentPadding =
+                            if (tvDevice) PaddingValues(top = 8.dp, bottom = TvDimens.SafeVertical) else PaddingValues(0.dp),
                         modifier =
                             Modifier
                                 .then(
@@ -826,8 +863,11 @@ fun HomeScreen(
                         itemsIndexed(homeShelves, key = { _, item ->
                             item.hashCode().toString() + (mainHomeThumbnail ?: "nothumb")
                         }) { index, item ->
+                            TvColumnItem {
                             Box {
-                                if (index == 0) {
+                                // TV: the pinned immersive header and the ambient background stand in
+                                // for the first shelf's glow.
+                                if (index == 0 && !tvDevice) {
                                     Box(
                                         modifier =
                                             Modifier
@@ -890,9 +930,11 @@ fun HomeScreen(
                                 Column(
                                     modifier =
                                         Modifier
-                                            .padding(horizontal = 15.dp),
+                                            // TV: rows are full-bleed so a focused card at the keyline is
+                                            // not cut by the row's edge; each section insets itself.
+                                            .padding(horizontal = if (tvDevice) 0.dp else 15.dp),
                                 ) {
-                                    if (index == 0) {
+                                    if (index == 0 && !tvDevice) {
                                         // The header's own height plus 8dp, so the first section does not
                                         // sit right under the chips.
                                         Spacer(
@@ -904,6 +946,7 @@ fun HomeScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     if (item.title == stringResource(Res.string.quick_picks)) {
                                         AnimatedVisibility(
+                                            modifier = tvSectionInset,
                                             visible =
                                                 homeData.find {
                                                     it.title ==
@@ -943,11 +986,13 @@ fun HomeScreen(
                                             )
                                         }
                                     } else if (item.isSongCardShelf()) {
-                                        HomeDiscoverSection(
-                                            data = item,
-                                            navController = navController,
-                                            homeViewModel = viewModel,
-                                        )
+                                        Box(tvSectionInset) {
+                                            HomeDiscoverSection(
+                                                data = item,
+                                                navController = navController,
+                                                homeViewModel = viewModel,
+                                            )
+                                        }
                                     } else {
                                         HomeItem(
                                             navController = navController,
@@ -955,6 +1000,7 @@ fun HomeScreen(
                                         )
                                     }
                                 }
+                            }
                             }
                         }
                         item {
@@ -979,7 +1025,7 @@ fun HomeScreen(
                                     Box(
                                         modifier =
                                             Modifier
-                                                .padding(horizontal = 15.dp),
+                                                .padding(horizontal = if (tvDevice) 0.dp else 15.dp),
                                     ) {
                                         HomeItem(
                                             navController = navController,
@@ -995,13 +1041,15 @@ fun HomeScreen(
                                     Box(
                                         modifier =
                                             Modifier
-                                                .padding(horizontal = 15.dp),
+                                                .padding(horizontal = if (tvDevice) TvDimens.SafeHorizontal else 15.dp),
                                     ) {
                                         moodMomentAndGenre?.let {
-                                            MoodMomentAndGenre(
-                                                mood = it,
-                                                navController = navController,
-                                            )
+                                            TvColumnItem {
+                                                MoodMomentAndGenre(
+                                                    mood = it,
+                                                    navController = navController,
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1010,7 +1058,7 @@ fun HomeScreen(
                                 Column(
                                     Modifier
                                         .padding(vertical = 10.dp)
-                                        .padding(horizontal = 15.dp),
+                                        .padding(horizontal = if (tvDevice) TvDimens.SafeHorizontal else 15.dp),
                                     verticalArrangement = Arrangement.SpaceBetween,
                                 ) {
                                     ChartTitle()
@@ -1042,10 +1090,12 @@ fun HomeScreen(
                                     ) { loading ->
                                         if (!loading) {
                                             chart?.let {
-                                                ChartData(
-                                                    chart = it,
-                                                    navController = navController,
-                                                )
+                                                TvColumnItem {
+                                                    ChartData(
+                                                        chart = it,
+                                                        navController = navController,
+                                                    )
+                                                }
                                             }
                                         } else {
                                             CenterLoadingBox(
@@ -1062,6 +1112,7 @@ fun HomeScreen(
                         item {
                             EndOfPage()
                         }
+                    }
                     }
                 } else {
                     Column {
@@ -1081,7 +1132,9 @@ fun HomeScreen(
         // top of the page it sits straight on the artwork glow; once the page scrolls under it, the blurred
         // bar fades in behind it.
         AnimatedContent(
-            targetState = atTop,
+            // TV: the bar always stands on the immersive header, never on the scrolling list, so it
+            // never needs the blurred bar behind it.
+            targetState = atTop || tvDevice,
             transitionSpec = {
                 fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
             },
@@ -1090,7 +1143,18 @@ fun HomeScreen(
                 modifier =
                     Modifier
                         .align(Alignment.TopCenter)
+                        // TV: inside the safe area. The row below already insets its ends by 16dp.
                         .then(
+                            if (tvDevice) {
+                                Modifier.padding(
+                                    start = TvDimens.SafeHorizontal - 16.dp,
+                                    top = TvDimens.SafeVertical,
+                                    end = TvDimens.SafeHorizontal - 16.dp,
+                                )
+                            } else {
+                                Modifier
+                            },
+                        ).then(
                             if (target) {
                                 Modifier.background(Color.Transparent)
                             } else {
@@ -1126,6 +1190,9 @@ fun HomeScreen(
                         onSettings = { navController.navigate(SettingsDestination) },
                     )
                 }
+                // TV: the chips and Create draw flat. Their glass would sample the list's recording,
+                // and on TV the bar is not over the list. Not re-indented, as above.
+                CompositionLocalProvider(LocalLiquidGlassEnabled provides (LocalLiquidGlassEnabled.current && !tvDevice)) {
                 Row(
                     modifier =
                         Modifier
@@ -1199,7 +1266,45 @@ fun HomeScreen(
                         Box(Modifier.padding(start = 8.dp, end = 16.dp)) { createActions() }
                     }
                 }
+                }
             }
+        }
+    }
+}
+
+/**
+ * TV only: the page behind Home and the immersive header pinned over its top. A composable of its
+ * own so that a header change recomposes this and nothing else in [HomeScreen].
+ */
+@Composable
+private fun BoxScope.TvHomeBackdrop(
+    controller: TvHeaderController,
+    fallback: HomeHeaderItem?,
+) {
+    val item = controller.settled ?: fallback
+    TvHeaderTintEffect(controller)
+    TvAmbientBackground(
+        artworkUrl = item?.artworkUrl,
+        modifier = Modifier.matchParentSize(),
+        tint = controller.tint,
+    )
+    TvImmersiveHeader(item = item, modifier = Modifier.align(Alignment.TopCenter))
+}
+
+/**
+ * TV only: gives Home's list the header controller its cards report to and the 25% vertical keyline.
+ * Off TV ([controller] is null) it only calls [content].
+ */
+@Composable
+private fun TvHomeList(
+    controller: TvHeaderController?,
+    content: @Composable () -> Unit,
+) {
+    if (controller == null) {
+        content()
+    } else {
+        CompositionLocalProvider(LocalTvHeaderController provides controller) {
+            ProvideTvColumnScrolling(content = content)
         }
     }
 }

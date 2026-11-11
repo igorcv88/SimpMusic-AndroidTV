@@ -39,6 +39,10 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,6 +112,9 @@ import com.maxrave.simpmusic.ui.theme.fontFamily
 import com.maxrave.simpmusic.ui.theme.parseThemeColorHex
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvGlassTier
+import com.maxrave.simpmusic.ui.tv.TvNavigationRail
+import com.maxrave.simpmusic.ui.tv.tvGlassTier
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.isAppLinkAvailable
 import com.maxrave.simpmusic.utils.libraryTabOf
@@ -151,7 +158,12 @@ fun App(
     onDismissDesktopNotificationPermissionDialog: (doNotShowAgain: Boolean) -> Unit = {},
     onOpenDesktopNotificationSettings: (doNotShowAgain: Boolean) -> Unit = {},
 ) {
-    CompositionLocalProvider(com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice()) {
+    CompositionLocalProvider(
+        com.maxrave.simpmusic.ui.tv.LocalTvDevice provides com.maxrave.simpmusic.ui.tv.rememberTvDevice(),
+        // Springs and fades for the TV design; a system animator scale of 0 turns them into snaps.
+        com.maxrave.simpmusic.ui.tv.LocalTvMotion provides
+            com.maxrave.simpmusic.ui.tv.resolveTvMotion(com.maxrave.simpmusic.ui.tv.rememberSystemAnimatorScale()),
+    ) {
         AppContent(viewModel, showDesktopNotificationPermissionDialog,
             onDismissDesktopNotificationPermissionDialog, onOpenDesktopNotificationSettings)
     }
@@ -533,8 +545,13 @@ private fun AppContent(
     val isTablet = windowSize.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
+    // TV: the content area's focus entry point. The rail sends focus here when the user leaves it
+    // toward the content or presses Back, and the area restores its last focused element.
+    val tvContentFocus = remember { FocusRequester() }
+
     AppTheme(
-        themeMode = themeMode,
+        // The TV design is dark only: its palette and contrast are defined against a dark page.
+        themeMode = if (tvDevice) DataStoreManager.THEME_MODE_DARK else themeMode,
         themeColorSource = themeColorSource,
         customThemeColor = parseThemeColorHex(customThemeColorHex),
         // The setting governs Desktop too, the same as Android: off, every glass surface draws flat.
@@ -727,6 +744,12 @@ private fun AppContent(
                                         },
                                     ),
                             ) {
+                                // What the tablet capsule's glass samples. A TV hides that capsule; its
+                                // only reader there is the open rail, and only where the device can blur
+                                // at all, so on API 30 nothing is recorded.
+                                val recordTabletBackdrop =
+                                    isLiquidGlassEnabled == TRUE && !isDesktopShell && isTablet && !isInFullscreen &&
+                                        (!tvDevice || tvGlassTier() != TvGlassTier.Drawn)
                                 if (isTablet && !isInFullscreen) {
                                     if (isDesktopShell) {
                                         DesktopSidebar(
@@ -736,6 +759,16 @@ private fun AppContent(
                                             showMixForYouTab = showMixForYouTab,
                                             // No end padding: the content panel's own 8dp is the gap between the two.
                                             modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 8.dp),
+                                        ) { klass ->
+                                            viewModel.reloadDestination(klass)
+                                        }
+                                    } else if (tvDevice) {
+                                        TvNavigationRail(
+                                            navController = navController,
+                                            showAnalyticsTab = showAnalyticsTab,
+                                            showMixForYouTab = showMixForYouTab,
+                                            backdrop = backdrop.takeIf { recordTabletBackdrop },
+                                            contentFocus = tvContentFocus,
                                         ) { klass ->
                                             viewModel.reloadDestination(klass)
                                         }
@@ -774,12 +807,25 @@ private fun AppContent(
                                             .then(
                                                 // Tablets record the capsule's source here; Desktop records it on
                                                 // the Row above, which takes in the sidebar as well.
-                                                if (isLiquidGlassEnabled == TRUE && !isDesktopShell && isTablet && !isInFullscreen) {
+                                                if (recordTabletBackdrop) {
                                                     Modifier.layerBackdrop(backdrop)
                                                 } else {
                                                     Modifier
                                                 },
-                                            ).hazeSource(hazeState),
+                                            ).hazeSource(hazeState)
+                                            .then(
+                                                if (tvDevice) {
+                                                    // One group for the whole content area, so the rail has a
+                                                    // single place to hand focus back to and that place returns
+                                                    // it to the element that had it.
+                                                    Modifier
+                                                        .focusRequester(tvContentFocus)
+                                                        .focusRestorer()
+                                                        .focusGroup()
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
                                     ) {
                                         CompositionLocalProvider(
                                             LocalAppDialogOpen provides appDialogOpen,
