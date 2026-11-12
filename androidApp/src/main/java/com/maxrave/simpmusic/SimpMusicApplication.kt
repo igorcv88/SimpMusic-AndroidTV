@@ -1,6 +1,8 @@
 package com.maxrave.simpmusic
 
 import android.annotation.SuppressLint
+import com.maxrave.common.PlaybackPlatformPolicy
+import com.maxrave.common.isTelevisionDevice
 import android.app.Application
 import android.database.CursorWindow
 import android.os.Build
@@ -141,7 +143,7 @@ class SimpMusicApplication :
                     DiskCache
                         .Builder()
                         .directory(FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "image_cache")
-                        .maxSizeBytes(512L * 1024 * 1024)
+                        .maxSizeBytes(PlaybackPlatformPolicy.forDevice(context.isTelevisionDevice()).thumbnailLimitMiB * 1024L * 1024)
                         .build(),
                 ).crossfade(true)
                 // CrossfadePainter otherwise sizes itself as max(placeholder, image) once and keeps it,
