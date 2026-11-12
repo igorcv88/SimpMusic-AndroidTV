@@ -16,7 +16,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlin.random.Random
 
 /** Session owner; destination identities are NavBackStackEntry ids, never route names. */
-class TvNavigationState {
+class TvNavigationState(private val request: (FocusRequester) -> Boolean = { it.requestFocus() }) {
+    private var handoffDestination: String? = null
     val railFocus = FocusRequester()
     var railHasFocus by mutableStateOf(false)
     private var activeDestination: String? = null
@@ -24,16 +25,26 @@ class TvNavigationState {
     fun prepare(destination: String, ready: Boolean) { contentReady[destination] = ready }
     fun contentReady(destination: String, ready: Boolean) {
         contentReady[destination] = ready
-        if (ready) enterIfFresh(destination)
+        if (ready) { restoreReady(destination); enterIfFresh(destination) }
     }
     private val saved = mutableMapOf<String, String>()
     private val targets = mutableMapOf<String, MutableMap<String, FocusRequester>>()
     private var pending: String? = null
     private val entries = mutableMapOf<String, FocusRequester>()
+    private val fallbackEntries = mutableMapOf<String, FocusRequester>()
     private val entered = mutableSetOf<String>()
-    fun registerEntry(destination: String, requester: FocusRequester) { entries[destination] = requester }
-    fun unregisterEntry(destination: String, requester: FocusRequester) {
-        if (entries[destination] === requester) entries.remove(destination)
+    fun registerEntry(destination: String, requester: FocusRequester, fallback: Boolean = false) {
+        (if (fallback) fallbackEntries else entries)[destination] = requester
+    }
+    /** Explicit rail activation may leave the rail; incidental recomposition must never do so. */
+    fun requestContentFocus(destination: String): Boolean {
+        handoffDestination = destination
+        pending = destination
+        return restoreReady(destination)
+    }
+    fun unregisterEntry(destination: String, requester: FocusRequester, fallback: Boolean = false) {
+        val registry = if (fallback) fallbackEntries else entries
+        if (registry[destination] === requester) registry.remove(destination)
     }
 
     /**
@@ -44,36 +55,41 @@ class TvNavigationState {
     fun enterIfFresh(destination: String): Boolean {
         if (!shouldEnterFresh(destination in entered, activeDestination == destination, railHasFocus, destination in saved, contentReady[destination] == true)) return false
         val requester = entries[destination] ?: return false
-        return requester.requestFocus().also { if (it) entered += destination }
+        return request(requester).also { if (it) entered += destination }
     }
     fun hasSavedFocus(destination: String?): Boolean = destination != null && saved.containsKey(destination)
     fun focused(destination: String, key: String) { saved[destination] = key }
     fun resume(destination: String) { activeDestination = destination; pending = destination }
     fun restoreContent(): Boolean {
         val destination = activeDestination ?: return false
-        resume(destination)
-        return restoreReady(destination)
+        return requestContentFocus(destination)
     }
     fun attach(destination: String, key: String, requester: FocusRequester) {
         targets.getOrPut(destination) { mutableMapOf() }[key] = requester
-        restore(destination, key, requester)
+        restoreReady(destination)
     }
     fun detach(destination: String, key: String) { targets[destination]?.remove(key) }
-    private fun restore(destination: String, key: String, requester: FocusRequester) {
-        if (pending == destination && saved[destination] == key) {
-            pending = null
-            if (!requester.requestFocus()) pending = destination
-        }
-    }
     fun restoreReady(destination: String): Boolean {
-        if (pending != destination) return false
+        if (pending != destination || activeDestination != destination) return false
+        if (handoffDestination == destination) {
+            if (contentReady[destination] != true) return false
+            val target = saved[destination]?.let { targets[destination]?.get(it) }
+                ?: entries[destination] ?: fallbackEntries[destination] ?: targets[destination]?.values?.firstOrNull() ?: return false
+            if (!request(target)) return false
+            pending = null
+            handoffDestination = null
+            entered += destination
+            return true
+        }
+        if (railHasFocus) return false
         val entries = targets[destination] ?: return false
         val key = saved[destination] ?: return false
         if (key !in entries && contentReady[destination] != true) return false
         val resolved = resolveTvFocusKey(key, entries.keys) ?: return false
         val requester = entries.getValue(resolved)
+        if (!request(requester)) return false
         pending = null
-        return requester.requestFocus()
+        return true
     }
 }
 
@@ -105,7 +121,7 @@ fun TvDestination(id: String, root: Boolean = false, waitForContent: Boolean = f
         navigation?.railFocus?.requestFocus()
     }
     CompositionLocalProvider(LocalTvDestination provides id) {
-        Box(Modifier.focusGroup().onGloballyPositioned {
+        Box(Modifier.tvDestinationEntry(fallback = true).focusGroup().onGloballyPositioned {
             if (owner.lifecycle.currentState == Lifecycle.State.RESUMED) navigation?.restoreReady(id)
         }) { content() }
     }
@@ -127,14 +143,14 @@ fun Modifier.tvRememberFocus(): Modifier = composed {
 }
 
 /** Marks the element (or group) that takes focus the first time its destination is shown. */
-fun Modifier.tvDestinationEntry(): Modifier = composed {
+fun Modifier.tvDestinationEntry(fallback: Boolean = false): Modifier = composed {
     val navigation = LocalTvNavigation.current
     val destination = LocalTvDestination.current
     if (!LocalTvDevice.current || navigation == null || destination == null) return@composed this
     val requester = remember { FocusRequester() }
     DisposableEffect(navigation, destination) {
-        navigation.registerEntry(destination, requester)
-        onDispose { navigation.unregisterEntry(destination, requester) }
+        navigation.registerEntry(destination, requester, fallback)
+        onDispose { navigation.unregisterEntry(destination, requester, fallback) }
     }
     this.focusRequester(requester).onGloballyPositioned { navigation.enterIfFresh(destination) }
 }

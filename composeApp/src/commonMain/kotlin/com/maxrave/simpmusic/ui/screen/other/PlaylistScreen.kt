@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.LocalTextStyle
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -532,7 +533,7 @@ fun PlaylistScreen(
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 HeartCheckBox(
-                                                                    size = 28,
+                                                                    size = if (LocalTvDevice.current) 48 else 28,
                                                                     checked = liked,
                                                                     onStateChange = {
                                                                         viewModel.onUIEvent(PlaylistUIEvent.Favorite)
@@ -541,13 +542,15 @@ fun PlaylistScreen(
                                                             }
                                                         }
                                                         IconButton(
+                                                            modifier = Modifier.tvFocusIndicator(CircleShape),
                                                             onClick = {
                                                                 showSearchBar = !showSearchBar
                                                             },
                                                         ) {
-                                                            Icon(SimpIcons.Search, null, tint = Color.White)
+                                                            Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                                                         }
                                                         IconButton(
+                                                            modifier = Modifier.tvFocusIndicator(CircleShape),
                                                             onClick = onPlaylistMoreClick,
                                                         ) {
                                                             Icon(
@@ -832,7 +835,7 @@ fun PlaylistScreen(
                                                             contentAlignment = Alignment.Center,
                                                         ) {
                                                             HeartCheckBox(
-                                                                size = 28,
+                                                                size = if (LocalTvDevice.current) 48 else 28,
                                                                 checked = liked,
                                                                 onStateChange = {
                                                                     viewModel.onUIEvent(PlaylistUIEvent.Favorite)
@@ -841,13 +844,15 @@ fun PlaylistScreen(
                                                         }
                                                     }
                                                     IconButton(
+                                                        modifier = Modifier.tvFocusIndicator(CircleShape),
                                                         onClick = {
                                                             showSearchBar = !showSearchBar
                                                         },
                                                     ) {
-                                                        Icon(SimpIcons.Search, null, tint = Color.White)
+                                                        Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                                                     }
                                                     IconButton(
+                                                        modifier = Modifier.tvFocusIndicator(CircleShape),
                                                         onClick = onPlaylistMoreClick,
                                                     ) {
                                                         Icon(
@@ -1234,6 +1239,7 @@ fun PlaylistScreen(
                             ) {
                             }
                             IconButton(
+                                modifier = Modifier.tvFocusIndicator(CircleShape),
                                 onClick = {
                                     showSearchBar = !showSearchBar
                                 },
@@ -1376,11 +1382,12 @@ fun PlaylistScreen(
                         },
                         actions = {
                             IconButton(
+                                modifier = Modifier.tvFocusIndicator(CircleShape),
                                 onClick = {
                                     showSearchBar = !showSearchBar
                                 },
                             ) {
-                                Icon(SimpIcons.Search, null, tint = Color.White)
+                                Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                             }
                         },
                         colors =

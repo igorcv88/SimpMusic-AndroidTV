@@ -155,6 +155,16 @@ fun TvNavigationRail(
     val redirecting = remember { booleanArrayOf(false) }
 
     val navigation = LocalTvNavigation.current
+    var pendingContentRoute by remember { mutableStateOf<KClass<*>?>(null) }
+    LaunchedEffect(currentBackStackEntry, pendingContentRoute) {
+        val route = pendingContentRoute ?: return@LaunchedEffect
+        val entry = currentBackStackEntry ?: return@LaunchedEffect
+        if (entry.destination.hierarchy.any { it.hasRoute(route) }) {
+            navigation?.requestContentFocus(entry.id)
+            pendingContentRoute = null
+        }
+    }
+
 
 
     // BACK with the rail focused is not intercepted: it follows the back stack (another tab
@@ -217,10 +227,11 @@ fun TvNavigationRail(
                         RailItem(
                             label = stringResource(screen.title),
                             icon = screen.icon,
-                            selected = !onSettings && selectedOrdinal == screen.ordinal,
+                            selected = !onSettings && (currentRoot?.ordinal ?: selectedOrdinal) == screen.ordinal,
                             expansion = expansion,
                             requester = requesters.getOrPut(screen.ordinal) { FocusRequester() },
                             onClick = {
+                                pendingContentRoute = screen.destination::class
                                 val atRoot =
                                     currentBackStackEntry?.destination?.hierarchy?.any {
                                         it.hasRoute(screen.destination::class)
@@ -233,13 +244,7 @@ fun TvNavigationRail(
                                     }
                                 } else {
                                     selectedOrdinal = screen.ordinal
-                                    navController.navigate(screen.destination) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                    navigateTvRailRoot(navController, screen.destination)
                                 }
                             },
                         )
@@ -253,6 +258,7 @@ fun TvNavigationRail(
                     expansion = expansion,
                     requester = requesters.getOrPut(SETTINGS_KEY) { FocusRequester() },
                     onClick = {
+                        pendingContentRoute = SettingsDestination::class
                         if (!onSettings) {
                             navController.navigate(SettingsDestination) { launchSingleTop = true }
                         }
@@ -432,9 +438,9 @@ private const val SETTINGS_KEY = -1
 private const val RAIL_SCRIM_DENSITY = 0.62f
 private val RAIL_PANEL_INSET = 8.dp
 private val RAIL_SCRIM_FADE = 160.dp
-private val RAIL_ITEM_INSET = 12.dp
+private val RAIL_ITEM_INSET = 20.dp
 private val RAIL_ITEM_GAP = 8.dp
-private val RAIL_DOT_SLOT = 12.dp
+private val RAIL_DOT_SLOT = 4.dp
 private val RAIL_ICON_SIZE = 24.dp
 private val RAIL_LABEL_GAP = 16.dp
 private val RAIL_BRAND_SIZE = 40.dp
