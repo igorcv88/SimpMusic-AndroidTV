@@ -686,10 +686,11 @@ fun SearchScreen(
                                     .padding(horizontal = 16.dp)
                                     .tvFocusRestorer(),
                             state = moodGridState,
-                            contentPadding = PaddingValues(top = searchBarHeight),
+                            contentPadding = PaddingValues(top = searchBarHeight + if (LocalTvDevice.current) 16.dp else 0.dp, bottom = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            if (!tvDevice) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 Column(
                                     modifier =
@@ -720,6 +721,7 @@ fun SearchScreen(
                                         uriHandler.openUri("https://chart.simpmusic.org")
                                     }
                                 }
+                            }
                             }
                             mood.sections.forEachIndexed { index, section ->
                                 // First section runs straight on from the header block above it,

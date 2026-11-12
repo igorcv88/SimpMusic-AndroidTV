@@ -5,6 +5,35 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class TvSceneGlassTest {
+    @Test
+    fun `artwork is available only to its eligible visible destination`() {
+        val scene = TvScene()
+        scene.beginArtwork("home-a")
+        scene.show(androidx.compose.ui.graphics.ImageBitmap(1, 1), 0.6f)
+        assertTrue(!scene.artworkAllowed)
+        scene.artworkAllowed = true
+        assertTrue(scene.canSampleArtwork)
+        assertEquals(0.6f, scene.luminance)
+        scene.artworkAllowed = false // Settings
+        assertTrue(!scene.canSampleArtwork)
+        scene.artworkAllowed = true // Home resumes without deleting its cached bitmap
+        assertEquals(0.6f, scene.luminance)
+    }
+
+    @Test
+    fun `changing artwork discards old material until matching request completes`() {
+        val scene = TvScene()
+        scene.beginArtwork("a")
+        scene.show(androidx.compose.ui.graphics.ImageBitmap(1, 1), 0.8f)
+        scene.beginArtwork("b")
+        assertEquals(0f, scene.luminance)
+        kotlin.test.assertNull(scene.image)
+        assertTrue(!scene.acceptsArtwork("a"))
+        assertTrue(scene.acceptsArtwork("b"))
+        scene.beginArtwork(null)
+        assertTrue(!scene.acceptsArtwork("b"))
+    }
+
     /** White text on a surface of relative luminance [surface]. */
     private fun whiteContrast(surface: Float) = 1.05f / (surface + 0.05f)
 

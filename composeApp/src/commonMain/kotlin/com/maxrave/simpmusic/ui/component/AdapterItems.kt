@@ -185,7 +185,7 @@ fun HomeItem(
                 modifier = Modifier.mouseDragScroll(lazyListState, snapperFlingBehavior).tvFocusRestorer(),
                 state = lazyListState,
                 flingBehavior = snapperFlingBehavior,
-                contentPadding = if (tvDevice) PaddingValues(horizontal = tvRowInset) else PaddingValues(0.dp),
+                contentPadding = if (tvDevice) PaddingValues(horizontal = tvRowInset, vertical = TvDimens.HeaderGap) else PaddingValues(0.dp),
             ) {
                 items(data.contents) { temp ->
                     if (temp != null) {
@@ -228,6 +228,42 @@ fun HomeSectionHeader(
 ) {
     val channelId = data.channelId
     val moreEndpoint = data.moreEndpoint
+    val tvDevice = LocalTvDevice.current
+    if (tvDevice) {
+        val titleAction: (() -> Unit)? = when {
+            channelId != null -> ({ navController.navigate(ArtistDestination(channelId = channelId)) })
+            moreEndpoint != null -> ({ navController.navigateToMoreEndpoint(moreEndpoint, data.title) })
+            else -> null
+        }
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The title's content owns this action, never the entire shelf or its More button.
+            Row(
+                Modifier.weight(1f, fill = false)
+                    .then(if (titleAction != null) Modifier.tvFocus(TvFocusStyle.Control, TvShapes.Small).clickable(onClick = titleAction) else Modifier)
+                    .padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (data.thumbnail?.lastOrNull() != null) {
+                    AsyncImage(
+                        model = data.thumbnail?.lastOrNull()?.url,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 10.dp).size(36.dp).clip(CircleShape),
+                    )
+                }
+                Column {
+                    if (!data.subtitle.isNullOrBlank()) Text(data.subtitle.orEmpty(), style = typo().bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(data.title, style = typo().headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            if (moreEndpoint != null) {
+                SectionHeaderButton(stringResource(Res.string.more)) { navController.navigateToMoreEndpoint(moreEndpoint, data.title) }
+            } else if (data.playAllEndpoint != null) {
+                SectionHeaderButton(stringResource(Res.string.play_all), onPlayAll)
+            }
+        }
+        return
+    }
     Row(
         modifier =
             if (channelId != null) {
@@ -877,6 +913,7 @@ fun QuickPicksItem(
             Modifier
                 .wrapContentHeight()
                 .width(widthDp - 30.dp)
+                .then(if (LocalTvDevice.current) Modifier.padding(horizontal = 4.dp, vertical = 2.dp) else Modifier)
                 .tvFocus(TvFocusStyle.Row, TvShapes.Small)
                 .focusable(!LocalTvDevice.current)
                 .clip(if (LocalTvDevice.current) TvShapes.Small else RoundedCornerShape(8.dp))

@@ -43,6 +43,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.tvFocus
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
+import com.maxrave.simpmusic.ui.tv.TvShapes
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -177,6 +181,7 @@ fun SongFullWidthItems(
         Box(
             modifier =
                 modifier
+                    .then(if (LocalTvDevice.current) Modifier.padding(horizontal = 12.dp, vertical = 2.dp).tvFocus(TvFocusStyle.Row, TvShapes.Small) else Modifier)
                     .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                     .background(
                         if (isSelected) seed.copy(alpha = 0.18f) else Color.Transparent,

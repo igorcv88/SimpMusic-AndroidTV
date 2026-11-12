@@ -33,7 +33,7 @@ object TvDimens {
     val ImmersiveHeaderHeight = 188.dp
 
     /** Radius of the `Card` focus glow and of the elevated glass shadow. */
-    val FocusGlow = 12.dp
+    val FocusGlow = 4.dp
     val GlassShadow = 16.dp
 
     /** The selected destination's dot in the rail. */
@@ -41,7 +41,7 @@ object TvDimens {
 
     /**
      * Home's cards keep a transparent inset around their artwork (half a [Gutter] on each side), so
-     * two neighbours' artworks stand one [Gutter] apart and the 1.10 focus scale grows into the
+     * two neighbours' artworks stand one [Gutter] apart and the 1.025 focus scale and 4 dp glow fit inside the
      * inset rather than onto the next card.
      */
     val CardInset = 10.dp
