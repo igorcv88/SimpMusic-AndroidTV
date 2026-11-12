@@ -686,7 +686,7 @@ fun SearchScreen(
                                     .padding(horizontal = 16.dp)
                                     .tvFocusRestorer(),
                             state = moodGridState,
-                            contentPadding = PaddingValues(top = searchBarHeight + if (LocalTvDevice.current) 16.dp else 0.dp, bottom = 16.dp),
+                            contentPadding = if (tvDevice) PaddingValues(top = searchBarHeight + 16.dp, bottom = 16.dp) else PaddingValues(top = searchBarHeight),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {

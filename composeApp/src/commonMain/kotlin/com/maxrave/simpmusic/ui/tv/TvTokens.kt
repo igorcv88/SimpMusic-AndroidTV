@@ -20,6 +20,10 @@ object TvDimens {
     val RailExpanded = 248.dp
     val RailItemHeight = 48.dp
 
+    /** A 48 dp playlist action keeps its complete scaled rim inside this nonclipping cluster. */
+    val PlaylistActionGutter = 4.dp
+    val PlaylistActionClusterHeight = 56.dp
+
     val SquareCard = 148.dp
     val WideCardWidth = 268.dp
     val WideCardHeight = 151.dp

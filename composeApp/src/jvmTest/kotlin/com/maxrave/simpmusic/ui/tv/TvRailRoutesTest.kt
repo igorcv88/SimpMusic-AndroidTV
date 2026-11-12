@@ -16,6 +16,7 @@ import kotlin.test.*
 class TvRailRoutesTest {
     private fun onMain(block: () -> Unit) = javax.swing.SwingUtilities.invokeAndWait(block)
     private fun controller() = NavHostController().apply {
+        setViewModelStore(androidx.lifecycle.ViewModelStore())
         navigatorProvider.addNavigator(ComposeNavigator())
         graph = createGraph(startDestination = HomeDestination) {
             composable<HomeDestination> { }
@@ -39,6 +40,17 @@ class TvRailRoutesTest {
         assertTrue(nav.currentDestination!!.hasRoute<LibraryDestination>())
         navigateTvRailRoot(nav, HomeDestination)
         assertTrue(nav.currentDestination!!.hasRoute<HomeDestination>())
+    }
+    @Test fun leavingSettingsRestoresSavedSearchEntryAndItsQueryState() = onMain {
+        val nav = controller()
+        nav.navigate(SearchDestination)
+        val search = nav.currentBackStackEntry!!
+        search.savedStateHandle["query"] = "saved search"
+        navigateTvRailRoot(nav, LibraryDestination)
+        nav.navigate(SettingsDestination)
+        navigateTvRailRoot(nav, SearchDestination)
+        assertEquals(search.id, nav.currentBackStackEntry!!.id)
+        assertEquals("saved search", nav.currentBackStackEntry!!.savedStateHandle.get<String>("query"))
     }
     @Test fun fullscreenBackPreservesTheExactEntryForEveryPlaybackOrigin() = onMain {
         for (origin in listOf(HomeDestination, LibraryDestination, SearchDestination, PlaylistDestination("test", false))) {

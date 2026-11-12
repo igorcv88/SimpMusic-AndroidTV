@@ -9,6 +9,14 @@ class TvPlayerRemoteTest {
             assertEquals(TvPlayerAction.Navigate, tvPlayerAction(true, key))
         }
     }
+    @Test fun lyricsDialogOwnsBackAndRemoteKeysWithoutWakingOrHidingTheFooter() {
+        for (visible in listOf(false, true)) {
+            for (key in TvPlayerKey.entries) {
+                assertEquals(TvPlayerAction.DeferToDialog, tvPlayerAction(visible, key, modalOpen = true))
+            }
+        }
+        assertEquals(TvPlayerAction.Hide, tvPlayerAction(true, TvPlayerKey.Back, modalOpen = false))
+    }
     @Test fun backHidesBeforeLeavingAndNeverChangesPlayback() {
         assertEquals(TvPlayerAction.Hide, tvPlayerAction(true, TvPlayerKey.Back))
         assertEquals(TvPlayerAction.Leave, tvPlayerAction(false, TvPlayerKey.Back))

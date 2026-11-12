@@ -13,6 +13,6 @@ internal fun navigateTvRailRoot(navController: NavController, destination: Any) 
     navController.navigate(destination) {
         popUpTo(navController.graph.startDestinationId) { saveState = true }
         launchSingleTop = true
-        restoreState = !leavingSettings
+        restoreState = true
     }
 }

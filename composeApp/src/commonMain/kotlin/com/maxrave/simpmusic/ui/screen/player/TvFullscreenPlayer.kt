@@ -22,6 +22,7 @@ import com.maxrave.simpmusic.expect.ui.MediaPlayerViewWithSubtitle
 import com.maxrave.simpmusic.expect.ui.PlatformBackHandler
 import com.maxrave.simpmusic.extension.elapsedLabel
 import com.maxrave.simpmusic.extension.lengthLabel
+import com.maxrave.simpmusic.ui.component.AddLyricsSheet
 import com.maxrave.simpmusic.ui.component.QueueBottomSheet
 import com.maxrave.simpmusic.ui.component.NowPlayingBottomSheet
 import com.maxrave.simpmusic.ui.icon.*
@@ -41,17 +42,20 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
     var subtitles by rememberSaveable { mutableStateOf(true) }
     var queue by rememberSaveable { mutableStateOf(false) }
     var more by rememberSaveable { mutableStateOf(false) }
+    // Snapshot the song being edited so a later track change cannot redirect its save.
+    var addLyricsFor by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val modalOpen = queue || more || addLyricsFor != null
     var inputTick by remember { mutableIntStateOf(0) }
     var swallowedRelease by remember { mutableStateOf<Key?>(null) }
     var seekFeedback by remember { mutableStateOf(false) }
     val surface = remember { FocusRequester() }
     val play = remember { FocusRequester() }
-    LaunchedEffect(visible, inputTick, queue, more) {
-        if (visible && !queue && !more) { delay(5000); visible = false }
+    LaunchedEffect(visible, inputTick, modalOpen) {
+        if (visible && !modalOpen) { delay(5000); visible = false }
     }
-    LaunchedEffect(visible, queue, more) {
-        if (!queue && !more) withFrameNanos { }
-        if (!queue && !more) {
+    LaunchedEffect(visible, modalOpen) {
+        if (!modalOpen) withFrameNanos { }
+        if (!modalOpen) {
             if (visible) play.requestFocus() else surface.requestFocus()
         }
     }
@@ -59,7 +63,7 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
         if (seekFeedback) { delay(1200); seekFeedback = false }
     }
     // One BACK hides the footer; a second pops the actual origin entry without touching playback.
-    PlatformBackHandler(enabled = !queue && !more) {
+    PlatformBackHandler(enabled = !modalOpen) {
         when (tvPlayerAction(visible, TvPlayerKey.Back)) {
             TvPlayerAction.Hide -> visible = false
             TvPlayerAction.Leave -> navController.popBackStack()
@@ -67,7 +71,7 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
         }
     }
     Box(Modifier.fillMaxSize().onPreviewKeyEvent { event ->
-        if (event.key == Key.Back) return@onPreviewKeyEvent false
+        if (modalOpen || event.key == Key.Back) return@onPreviewKeyEvent false
         if (event.type == KeyEventType.KeyUp && swallowedRelease == event.key) {
             swallowedRelease = null
             return@onPreviewKeyEvent true
@@ -82,7 +86,7 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
             else -> TvPlayerKey.Other
         }
         if (key != TvPlayerKey.Other) inputTick++
-        if (tvPlayerAction(visible, key) == TvPlayerAction.Reveal) {
+        if (tvPlayerAction(visible, key, modalOpen) == TvPlayerAction.Reveal) {
             visible = true
             swallowedRelease = event.key
             true
@@ -137,7 +141,28 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
         }
         if (seekFeedback) Text("5 s", Modifier.align(Alignment.Center).background(Color.Black.copy(alpha = 0.5f)).padding(12.dp), color = Color.White)
         if (queue) QueueBottomSheet(onDismiss = { queue = false }, navController = navController, onNavigateToOtherScreen = { navController.popBackStack() })
-        if (more) NowPlayingBottomSheet(onDismiss = { more = false }, navController = navController, setSleepTimerEnable = true, changeMainLyricsProviderEnable = true, song = null)
+        if (more) NowPlayingBottomSheet(
+            onDismiss = { more = false },
+            navController = navController,
+            setSleepTimerEnable = true,
+            changeMainLyricsProviderEnable = true,
+            song = null,
+            onAddLyrics = if (nowPlaying.lyricsNotFound && nowPlaying.lyricsData == null) {
+                {
+                    sharedViewModel.nowPlayingState.value?.songEntity?.let { song ->
+                        addLyricsFor = arrayListOf(song.videoId, song.title, song.artistName?.joinToString(", ").orEmpty())
+                    }
+                }
+            } else null,
+        )
+        addLyricsFor?.let { (videoId, title, artist) ->
+            AddLyricsSheet(
+                songTitle = title,
+                artist = artist,
+                onSave = { lyrics -> sharedViewModel.saveUserLyrics(videoId, lyrics) },
+                onDismiss = { addLyricsFor = null },
+            )
+        }
     }
 }
 
