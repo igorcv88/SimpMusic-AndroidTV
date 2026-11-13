@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tv_switch_music_video">Mudar para o videoclipe</string>
+    <string name="tv_switch_song">Mudar para somente música</string>
+    <string name="tv_rendition_pending">Preparando versão vinculada…</string>
+    <string name="tv_rendition_unavailable">Nenhuma versão oficial vinculada disponível</string>
+    <string name="tv_rendition_unsupported">A troca exige reprodução local online de uma faixa que não seja ao vivo</string>
+    <string name="tv_rendition_error">Não foi possível trocar. Tente novamente.</string>
     <string name="Song_and_artist_name">Música • %1$s</string>
     <string name="playlist_and_author">Playlist • %1$s</string>
     <string name="album_and_artist_name">Álbum • %1$s</string>

@@ -1,5 +1,7 @@
 # Android TV 2.5.2 stability
 
+The TV player addition is documented separately in [Official song / music-video switching](ANDROID_TV_RENDITION_SWITCH.md), including the exact-link policy, transactional source preparation and hardware acceptance limits.
+
 ## Diagnosis and changes
 
 The supplied crash screenshot identifies build 2.5.2 on Android 11/API 30. Its complete R8 map ID matches the retained mapping: `3ad18d5c62d1d9e717d10d667b0c6f968fe1eecb43752fe29c4f52b808950bd3`. The relevant chain resolves to Compose ancestor traversal called by `TvGlowAnchorNode.onPlaced`. The anchor performed that traversal before checking attachment. A separate draw-node check happened too late to protect it.

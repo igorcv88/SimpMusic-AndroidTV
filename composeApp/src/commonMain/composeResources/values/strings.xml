@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tv_switch_music_video">Switch to music video</string>
+    <string name="tv_switch_song">Switch to song only</string>
+    <string name="tv_rendition_pending">Preparing linked rendition…</string>
+    <string name="tv_rendition_unavailable">No official linked rendition available</string>
+    <string name="tv_rendition_unsupported">Switching requires online local playback of a non-live track</string>
+    <string name="tv_rendition_error">Could not switch. Try again.</string>
     <string name="Song_and_artist_name">Song • %1$s</string>
     <string name="playlist_and_author">Playlist • %1$s</string>
     <string name="album_and_artist_name">Album • %1$s</string>
