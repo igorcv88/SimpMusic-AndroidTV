@@ -2094,7 +2094,9 @@ fun HeartCheckBox(
     onStateChange: (() -> Unit)? = null,
 ) {
     val burstState = rememberHeartBurstState()
+    val tvDevice = com.maxrave.simpmusic.ui.tv.LocalTvDevice.current
     Box(
+        contentAlignment = Alignment.Center,
         modifier =
             Modifier
                 .size(size.dp)
@@ -2111,18 +2113,18 @@ fun HeartCheckBox(
                     onStateChange?.invoke()
                 },
     ) {
-        Crossfade(targetState = checked, modifier = Modifier.fillMaxSize()) {
+        Crossfade(targetState = checked, modifier = if (tvDevice) Modifier.size(24.dp) else Modifier.fillMaxSize()) {
             if (it) {
                 Image(
                     painter = painterResource(Res.drawable.baseline_favorite_24),
                     contentDescription = "Favorite checked",
-                    modifier = Modifier.fillMaxSize().padding(4.dp),
+                    modifier = if (tvDevice) Modifier.fillMaxSize() else Modifier.fillMaxSize().padding(4.dp),
                 )
             } else {
                 Image(
                     imageVector = SimpIcons.FavoriteBorder,
                     contentDescription = "Favorite unchecked",
-                    modifier = Modifier.fillMaxSize().padding(4.dp),
+                    modifier = if (tvDevice) Modifier.fillMaxSize() else Modifier.fillMaxSize().padding(4.dp),
                     colorFilter = ColorFilter.tint(tint),
                 )
             }

@@ -22,12 +22,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
@@ -103,10 +109,12 @@ fun Modifier.tvFocus(
         if (!LocalTvDevice.current) return@composed this
         val motion = LocalTvMotion.current
         val state = remember { TvFocusState() }
+        val overlay = LocalTvBackdropOverlay.current
+        val contentLayer = if (overlay != null) rememberGraphicsLayer() else null
         this
             .tvRememberFocus()
             .then(TvFocusLayerElement(state, style, motion.focusSpring, motion.reduced))
-            .then(TvFocusDrawElement(state, style, shape, glow))
+            .then(TvFocusDrawElement(state, style, shape, glow, overlay, contentLayer))
     }
 
 /**
@@ -269,8 +277,10 @@ private data class TvFocusDrawElement(
     val style: TvFocusStyle,
     val shape: Shape?,
     val glow: Color?,
+    val overlay: TvBackdrop?,
+    val contentLayer: GraphicsLayer?,
 ) : ModifierNodeElement<TvFocusDrawNode>() {
-    override fun create() = TvFocusDrawNode(state, style, shape, glow)
+    override fun create() = TvFocusDrawNode(state, style, shape, glow, overlay, contentLayer)
 
     override fun update(node: TvFocusDrawNode) {
         val shapeChanged = node.shape != shape || node.style != style
@@ -278,6 +288,7 @@ private data class TvFocusDrawElement(
         node.style = style
         node.shape = shape
         node.glow = glow
+        node.updateOverlay(overlay, contentLayer)
         if (shapeChanged) node.clearOutline()
         node.invalidateDraw()
     }
@@ -296,6 +307,8 @@ private class TvFocusDrawNode(
     var style: TvFocusStyle,
     var shape: Shape?,
     var glow: Color?,
+    private var overlay: TvBackdrop?,
+    private var contentLayer: GraphicsLayer?,
 ) : Modifier.Node(),
     DrawModifierNode,
     GlobalPositionAwareModifierNode,
@@ -307,10 +320,30 @@ private class TvFocusDrawNode(
     private val rim = TvGlassCache()
     private val placement = TvGlassPlacement()
 
+    fun updateOverlay(value: TvBackdrop?, layer: GraphicsLayer?) {
+        if (overlay !== value) overlay?.overlays?.remove(this)
+        overlay = value
+        contentLayer = layer
+    }
+
+    override fun onDetach() {
+        overlay?.overlays?.remove(this)
+        overlay?.reads?.clear(this)
+        overlay?.overlayChanged()
+    }
+    override fun onReset() {
+        overlay?.overlays?.remove(this)
+        overlay?.reads?.clear(this)
+        overlay?.overlayChanged()
+    }
+
     // Only a showing focus surface is redrawn when it moves; the rest draw nothing.
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         if (!isAttached || !coordinates.isAttached) return
-        if (placement.update(coordinates) && state.shownProgress() > 0.001f) invalidateDraw()
+        if (placement.update(coordinates)) {
+            overlay?.request()
+            if (state.shownProgress() > 0.001f) invalidateDraw()
+        }
     }
 
     private var outline: Outline? = null
@@ -337,31 +370,80 @@ private class TvFocusDrawNode(
     }
 
     override fun ContentDrawScope.draw() {
+        val target = overlay
+        val layer = contentLayer
+        if (target != null && layer != null) {
+            if (state.shownProgress() <= 0.001f) {
+                target.overlays.remove(this@TvFocusDrawNode)
+                target.observeContent(this@TvFocusDrawNode) { drawContent() }
+                target.request()
+                target.overlayChanged()
+                return
+            }
+            // Only the foreground enters the base recording, including when this node is itself
+            // cached in a scaled child graphics layer. Glass commands live in the sibling pass.
+            layer.record { target.observeContent(this@TvFocusDrawNode) { this@draw.drawContent() } }
+            drawLayer(layer)
+            target.overlays[this@TvFocusDrawNode] = {
+                if (isAttached && state.shownProgress() > 0.001f) {
+                    val coordinates = requireLayoutCoordinates()
+                    if (coordinates.isAttached) {
+                        placement.update(coordinates)
+                        val origin = coordinates.localToRoot(Offset.Zero) - target.origin
+                        val corner = coordinates.localToRoot(Offset(layer.size.width.toFloat(), layer.size.height.toFloat())) - target.origin
+                        val visible = coordinates.boundsInRoot().translate(-target.origin)
+                        clipRect(visible.left, visible.top, visible.right, visible.bottom) {
+                        withTransform({
+                            translate(origin.x, origin.y)
+                            scale((corner.x - origin.x) / layer.size.width, (corner.y - origin.y) / layer.size.height, pivot = Offset.Zero)
+                        }) {
+                            drawDecoration(layer.size.width.toFloat(), layer.size.height.toFloat())
+                            if (style != TvFocusStyle.Card) drawLayer(layer)
+                            drawCardRim(Size(layer.size.width.toFloat(), layer.size.height.toFloat()))
+                        }
+                        }
+                    }
+                }
+            }
+            target.request()
+            target.overlayChanged()
+            return
+        }
+        drawDecoration(size.width, size.height)
+        drawContent()
+        drawCardRim()
+    }
+
+    private fun DrawScope.drawDecoration(width: Float, height: Float) {
         val progress = state.shownProgress()
         if (progress > 0.001f) {
             when (style) {
                 TvFocusStyle.Card -> {
-                    drawGlow(progress)
+                    drawGlow(progress, Size(width, height))
                 }
 
                 // The focused control, row or field gains the scene's glass in its own shape.
                 TvFocusStyle.Row, TvFocusStyle.Backing, TvFocusStyle.Control -> {
                     drawSceneGlass(
-                        outline = resolveOutline(size),
+                        outline = resolveOutline(Size(width, height)),
                         cache = glass,
                         scene = currentValueOf(LocalTvScene),
                         origin = placement.origin,
                         root = placement.root,
                         kind = TvGlassKind.Focus,
                         alpha = progress.coerceIn(0f, 1f),
+                        forSize = Size(width, height),
                     )
                 }
             }
         }
-        drawContent()
+    }
+
+    private fun DrawScope.drawCardRim(forSize: Size = size) {
+        val progress = state.shownProgress()
         // A card keeps its artwork as the surface; only the specular rim is laid over it.
         if (progress > 0.001f && style == TvFocusStyle.Card) {
-            val bounds = state.glowBounds ?: Rect(Offset.Zero, size)
+            val bounds = state.glowBounds ?: Rect(Offset.Zero, forSize)
             if (bounds.isEmpty) return
             val outline = resolveOutline(bounds.size)
             rim.prepare(this, outline, bounds.size)
@@ -373,8 +455,8 @@ private class TvFocusDrawNode(
         }
     }
 
-    private fun DrawScope.drawGlow(progress: Float) {
-        val bounds = state.glowBounds ?: Rect(Offset.Zero, size)
+    private fun DrawScope.drawGlow(progress: Float, forSize: Size) {
+        val bounds = state.glowBounds ?: Rect(Offset.Zero, forSize)
         if (bounds.isEmpty) return
         val corner =
             when (val resolved = resolveOutline(bounds.size)) {

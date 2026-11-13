@@ -2,7 +2,11 @@ package com.maxrave.simpmusic.ui.screen.other
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade as Crossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -1073,7 +1077,8 @@ fun SearchScreen(
                         .windowInsetsPadding(WindowInsets.statusBars)
                         .padding(vertical = 10.dp),
             ) {
-        AnimatedVisibility(visible = selectionState.isActive) {
+        AnimatedVisibility(visible = selectionState.isActive,
+            enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
             SongSelectionTopAppBar(
                 state = selectionState,
                 onSelectAll = {
@@ -1267,7 +1272,8 @@ fun SearchScreen(
                 // Filter chips ride along inside the blurred block instead of sitting in the
                 // results branch. That way searchBarHeight covers them too, results scroll
                 // underneath the whole thing, and the glass has something to blur.
-                AnimatedVisibility(visible = searchUIType == SearchUIType.SEARCH_RESULTS) {
+                AnimatedVisibility(visible = searchUIType == SearchUIType.SEARCH_RESULTS,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     Row(
                         modifier =
                             Modifier

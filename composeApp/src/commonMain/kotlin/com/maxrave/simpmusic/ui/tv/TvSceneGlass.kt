@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -19,21 +20,29 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.GlobalPositionAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -43,16 +52,13 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * The picture every TV glass surface is made of: the ambient artwork, already blurred off the main
- * thread (see `ambientBlur`). The ambient background publishes it; glass surfaces draw the part of
- * it that lies behind them, so a panel, a focused row and the rail all carry the colour and light
- * of the eligible visible scene. Other destinations use a neutral drawn material.
- *
- * Nothing is blurred, captured or decoded for a glass surface: it draws one clipped copy of a
- * bitmap that already exists. That is why the material is the same on API 30 as on 34.
+ * Shared TV material images. API 30 publishes an isolated sampled content frame through
+ * [backdrop]; other tiers retain the eligible ambient artwork path. Each surface samples the
+ * corresponding root coordinates without running its own blur.
  */
 @Stable
 class TvScene {
+    internal var backdrop by mutableStateOf<TvBackdrop?>(null)
     /** Only the destination actually drawing this artwork may sample it. */
     var artworkAllowed by mutableStateOf(false)
     private var requestedArtwork: String? = null
@@ -169,6 +175,22 @@ internal fun DrawScope.drawSceneGlass(
     if (alpha <= 0.001f) return
     cache.prepare(this, outline, forSize)
     val focused = kind == TvGlassKind.Focus
+    val live = scene?.backdrop
+    if (live != null) {
+        val frame = live.frame
+        val path = cache.path
+        if (frame != null && path != null) {
+            clipPath(path) {
+                drawBackdropFrame(frame, origin, forSize, alpha)
+            }
+            drawOutline(outline, Color.Black, alpha = alpha * 0.12f)
+        } else {
+            drawOutline(outline, Color.White, alpha = alpha * 0.035f)
+        }
+        cache.sheen?.let { drawOutline(outline, it, alpha = alpha) }
+        cache.edge?.let { edge -> cache.edgeStroke?.let { drawOutline(outline, edge, alpha = alpha * 0.65f, style = it) } }
+        return
+    }
     val image = scene?.image?.takeIf { scene.canSampleArtwork }
     val path = cache.path
     if (image != null && path != null && root.width >= 1f && root.height >= 1f) {
@@ -205,17 +227,24 @@ internal fun DrawScope.drawSceneGlass(
 fun Modifier.tvSceneGlass(
     shape: Shape = TvShapes.Panel,
     elevated: Boolean = false,
-): Modifier = this.then(TvSceneGlassElement(shape, elevated))
+): Modifier = composed {
+    val overlay = LocalTvBackdropOverlay.current
+    val content = if (overlay != null) rememberGraphicsLayer() else null
+    this.then(TvSceneGlassElement(shape, elevated, overlay, content))
+}
 
 private data class TvSceneGlassElement(
     val shape: Shape,
     val elevated: Boolean,
+    val overlay: TvBackdrop?,
+    val content: GraphicsLayer?,
 ) : ModifierNodeElement<TvSceneGlassNode>() {
-    override fun create() = TvSceneGlassNode(shape, elevated)
+    override fun create() = TvSceneGlassNode(shape, elevated, overlay, content)
 
     override fun update(node: TvSceneGlassNode) {
         node.shape = shape
         node.elevated = elevated
+        node.updateOverlay(overlay, content)
         node.invalidateDraw()
     }
 
@@ -227,6 +256,8 @@ private data class TvSceneGlassElement(
 private class TvSceneGlassNode(
     var shape: Shape,
     var elevated: Boolean,
+    private var overlay: TvBackdrop?,
+    private var content: GraphicsLayer?,
 ) : Modifier.Node(),
     DrawModifierNode,
     GlobalPositionAwareModifierNode,
@@ -238,8 +269,26 @@ private class TvSceneGlassNode(
     private var outlineShape: Shape? = null
     private var shadow: Stroke? = null
 
+    fun updateOverlay(value: TvBackdrop?, layer: GraphicsLayer?) {
+        if (overlay !== value) {
+            overlay?.overlays?.remove(this)
+            overlay?.reads?.clear(this)
+        }
+        overlay = value
+        content = layer
+    }
+
+    override fun onDetach() {
+        overlay?.overlays?.remove(this)
+        overlay?.reads?.clear(this)
+        overlay?.overlayChanged()
+    }
+
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
-        if (placement.update(coordinates)) invalidateDraw()
+        if (placement.update(coordinates)) {
+            overlay?.request()
+            invalidateDraw()
+        }
     }
 
     override fun ContentDrawScope.draw() {
@@ -250,6 +299,36 @@ private class TvSceneGlassNode(
                     outlineSize = size
                     outlineShape = shape
                 }
+        val target = overlay
+        val layer = content
+        if (target != null && layer != null) {
+            layer.record { target.observeContent(this@TvSceneGlassNode) { this@draw.drawContent() } }
+            drawLayer(layer)
+            target.overlays[this@TvSceneGlassNode] = {
+                if (isAttached) {
+                    val coordinates = requireLayoutCoordinates()
+                    if (coordinates.isAttached) {
+                    placement.update(coordinates)
+                    val origin = coordinates.localToRoot(Offset.Zero) - target.origin
+                    val corner = coordinates.localToRoot(Offset(layer.size.width.toFloat(), layer.size.height.toFloat())) - target.origin
+                    val visible = coordinates.boundsInRoot().translate(-target.origin)
+                    clipRect(visible.left, visible.top, visible.right, visible.bottom) {
+                    withTransform({
+                        translate(origin.x, origin.y)
+                        scale((corner.x - origin.x) / layer.size.width, (corner.y - origin.y) / layer.size.height, pivot = Offset.Zero)
+                    }) {
+                        drawSceneGlass(resolved, cache, currentValueOf(LocalTvScene), placement.origin, placement.root, TvGlassKind.Panel,
+                            forSize = Size(layer.size.width.toFloat(), layer.size.height.toFloat()))
+                        drawLayer(layer)
+                    }
+                    }
+                    }
+                }
+            }
+            target.request()
+            target.overlayChanged()
+            return
+        }
         if (elevated) {
             val ring = shadow ?: Stroke(TvDimens.GlassShadow.toPx() / PANEL_SHADOW_RINGS).also { shadow = it }
             drawSoftHalo(

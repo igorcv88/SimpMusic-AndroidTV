@@ -22,9 +22,16 @@ import com.maxrave.simpmusic.ui.tv.tvFocus
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -64,6 +71,8 @@ fun SettingItem(
     // logout that invalidates it (SettingsViewModel: setSpotifyLogIn, logOutDiscord, logOutLastfm,
     // setUsedAccount, logOutAllYouTube, setAIApiKey), which is a real event and cannot misfire.
     val tvDevice = LocalTvDevice.current
+    val groupEdgeTolerance = with(LocalDensity.current) { 1.dp.toPx() } + 1f
+    var rowShape by remember { mutableStateOf(SettingGroupShape) }
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     // The disabled colour the sheets use (SurfaceDarkColors.disabled). TextStyle.greyScale() alone
     // left a disabled title as bright as an enabled one, because the title passes its own colour,
@@ -74,7 +83,13 @@ fun SettingItem(
             // Rows separate themselves: a hairline along the top, from where the text starts to the
             // card's far edge (mirrored right-to-left). SettingGroup leaves the first row's undrawn,
             // so a row hidden by a condition never leaves a stray line at the top of the card.
-            .then(if (tvDevice) Modifier.padding(4.dp).tvFocus(TvFocusStyle.Row, TvShapes.Small) else Modifier)
+            .then(if (tvDevice) Modifier.onGloballyPositioned { coordinates ->
+                val parent = coordinates.parentLayoutCoordinates
+                if (coordinates.isAttached && parent?.isAttached == true) {
+                    val top = coordinates.positionInParent().y
+                    rowShape = settingRowShape(top <= groupEdgeTolerance, top + coordinates.size.height >= parent.size.height - groupEdgeTolerance)
+                }
+            }.tvFocus(TvFocusStyle.Row, rowShape) else Modifier)
             .drawBehind {
                 if (tvDevice) return@drawBehind
                 val y = SettingDividerThickness.toPx() / 2
@@ -183,8 +198,9 @@ fun SettingGroup(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .then(if (!tvDevice) Modifier.clip(SettingGroupShape) else Modifier.padding(4.dp))
+                    .then(if (!tvDevice) Modifier.clip(SettingGroupShape) else Modifier)
                     .background(cardColor.copy(alpha = 0.5f), SettingGroupShape)
+                    .then(if (tvDevice) Modifier.padding(1.dp) else Modifier)
                     .drawWithContent {
                         // The first row's hairline would sit on the card's own edge, so that strip is
                         // left undrawn. Clipped rather than painted over: the card is translucent.
@@ -216,5 +232,11 @@ private fun settingGroupColor(): Color =
     }
 
 private val SettingGroupShape = RoundedCornerShape(20.dp)
+internal fun settingRowShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+    topStart = if (first) 19.dp else 0.dp,
+    topEnd = if (first) 19.dp else 0.dp,
+    bottomStart = if (last) 19.dp else 0.dp,
+    bottomEnd = if (last) 19.dp else 0.dp,
+)
 private val SettingRowPaddingHorizontal = 16.dp
 private val SettingDividerThickness = 0.5.dp

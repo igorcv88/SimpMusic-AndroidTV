@@ -690,7 +690,7 @@ fun HomeItemContentPlaylist(
                     is MonthlyRecapItem -> null
                     else -> null
                 }
-            Box(Modifier.tvFocusGlowAnchor()) {
+            Box {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -771,6 +771,7 @@ fun HomeItemContentPlaylist(
                     modifier =
                         (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.size(thumbSize))
                             .aspectRatio(1f)
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),
@@ -1063,7 +1064,7 @@ fun HomeItemSong(
                         it
                     }
                 }
-            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
+            Box(Modifier.align(Alignment.CenterHorizontally)) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -1080,6 +1081,7 @@ fun HomeItemSong(
                     modifier =
                         Modifier
                             .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(artSize))
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),
@@ -1176,7 +1178,7 @@ fun HomeItemVideo(
                     .heightIn(min = if (tvDevice) TvDimens.SquareCard + 70.dp else 230.dp),
         ) {
             val thumb = data.thumbnails.lastOrNull()?.url
-            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
+            Box(Modifier.align(Alignment.CenterHorizontally)) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -1199,6 +1201,7 @@ fun HomeItemVideo(
                                     else -> Modifier.height(160.dp)
                                 },
                             ).aspectRatio(16f / 9f)
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),

@@ -1,7 +1,11 @@
 package com.maxrave.simpmusic.ui.screen.home
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade as Crossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -1462,7 +1466,8 @@ fun SettingScreen(
                             )
                         },
                     )
-                    AnimatedVisibility(visible = equalizerType == DataStoreManager.EQUALIZER_TYPE_SYSTEM) {
+                    AnimatedVisibility(visible = equalizerType == DataStoreManager.EQUALIZER_TYPE_SYSTEM,
+                        enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                         SettingItem(
                             title = stringResource(Res.string.open_system_equalizer),
                             subtitle =
@@ -1488,7 +1493,8 @@ fun SettingScreen(
                 // Android-only branch — "Open system equalizer" is an Android feature — and this
                 // one is on both platforms: mpv's `af` chain on Desktop, an AudioProcessor in the
                 // Media3 sink on Android, driven from the same stored curve.
-                AnimatedVisibility(visible = getPlatform() != Platform.Android || equalizerType != DataStoreManager.EQUALIZER_TYPE_SYSTEM) {
+                AnimatedVisibility(visible = getPlatform() != Platform.Android || equalizerType != DataStoreManager.EQUALIZER_TYPE_SYSTEM,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     Column {
                         SettingItem(
                             title = stringResource(Res.string.equalizer),
@@ -1499,7 +1505,8 @@ fun SettingScreen(
                         // Only while on. A curve that visibly does nothing is worse than no curve —
                         // and the stored bands survive the switch, so turning it back on returns to
                         // the shape the user built rather than to flat.
-                        AnimatedVisibility(visible = equalizerEnabled) {
+                        AnimatedVisibility(visible = equalizerEnabled,
+                            enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                             EqualizerSection()
                         }
                     }
@@ -1516,7 +1523,8 @@ fun SettingScreen(
                 )
                 // Only while on, like the curve — and the three values survive the switch, so
                 // turning it back on returns to the echo the user dialled in.
-                AnimatedVisibility(visible = delayEnabled) {
+                AnimatedVisibility(visible = delayEnabled,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     DelaySection()
                 }
                 SettingItem(
@@ -1526,7 +1534,8 @@ fun SettingScreen(
                     switch = (reverbEnabled to { viewModel.setReverbEnabled(it) }),
                 )
                 // Same again: the room and the wet level outlive the switch.
-                AnimatedVisibility(visible = reverbEnabled) {
+                AnimatedVisibility(visible = reverbEnabled,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     ReverbSection()
                 }
                 SettingItem(
@@ -1554,7 +1563,8 @@ fun SettingScreen(
                     switch = (crossfadeEnabled to { viewModel.setCrossfadeEnabled(it) }),
                     isEnable = !castState.isRemote,
                 )
-                AnimatedVisibility(visible = crossfadeEnabled) {
+                AnimatedVisibility(visible = crossfadeEnabled,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     Column {
                         SettingItem(
                             title = stringResource(Res.string.crossfade_duration),
@@ -2596,7 +2606,8 @@ fun SettingScreen(
                         subtitle = stringResource(Res.string.auto_backup_description),
                         switch = (autoBackupEnabled to { viewModel.setAutoBackupEnabled(it) }),
                     )
-                    AnimatedVisibility(visible = autoBackupEnabled) {
+                    AnimatedVisibility(visible = autoBackupEnabled,
+                        enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                         Column {
                             SettingItem(
                                 title = stringResource(Res.string.backup_frequency),
@@ -3449,8 +3460,8 @@ fun SettingScreen(
     val settingBarTint = MaterialTheme.colorScheme.background
     AnimatedVisibility(
         visible = showPinnedBar,
-        enter = fadeIn() + slideInVertically(),
-        exit = fadeOut() + slideOutVertically(),
+        enter = tvBackdropEnter(fadeIn() + slideInVertically()),
+        exit = tvBackdropExit(fadeOut() + slideOutVertically()),
     ) {
         SettingTopBar(
             onBack = { navController.navigateUp() },

@@ -2,7 +2,11 @@ package com.maxrave.simpmusic.ui.screen.home
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade as Crossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -955,6 +959,8 @@ fun HomeScreen(
                                     if (item.title == stringResource(Res.string.quick_picks)) {
                                         AnimatedVisibility(
                                             modifier = tvSectionInset,
+                                            enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                            exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                             visible =
                                                 homeData.find {
                                                     it.title ==
@@ -1037,6 +1043,8 @@ fun HomeScreen(
                             items(newRelease, key = { it.hashCode() }) {
                                 AnimatedVisibility(
                                     visible = newRelease.isNotEmpty(),
+                                    enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                    exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                 ) {
                                     Box(
                                         modifier =
@@ -1053,6 +1061,8 @@ fun HomeScreen(
                             item {
                                 AnimatedVisibility(
                                     visible = moodMomentAndGenre != null,
+                                    enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                    exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                 ) {
                                     Box(
                                         modifier =

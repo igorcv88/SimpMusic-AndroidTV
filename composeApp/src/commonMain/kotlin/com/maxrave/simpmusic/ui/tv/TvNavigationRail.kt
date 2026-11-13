@@ -280,6 +280,7 @@ private fun RailMaterial(
     backdrop: PlatformBackdrop?,
     open: Boolean,
 ) {
+    val liveBackdrop = LocalTvScene.current?.backdrop != null
     Box(
         Modifier
             .fillMaxSize()
@@ -287,14 +288,14 @@ private fun RailMaterial(
                 val progress = expansion.value.coerceIn(0f, 1f)
                 // Closed: the strip is the page itself, so the icons sit on the app, not on a bar.
                 val strip = TvDimens.RailCollapsed.toPx()
-                drawRect(
+                if (!liveBackdrop) drawRect(
                     TvPalette.Background,
                     topLeft = Offset(if (rtl) size.width - strip else 0f, 0f),
                     size = Size(strip, size.height),
                 )
                 // Open: the content beside the panel dims and falls away, so the panel is the one
                 // thing in focus and nothing behind it competes with its labels.
-                if (progress > 0f) {
+                if (!liveBackdrop && progress > 0f) {
                     val reach = size.width + RAIL_SCRIM_FADE.toPx()
                     val panelStop = size.width / reach
                     val dense = TvPalette.Background.copy(alpha = RAIL_SCRIM_DENSITY)
