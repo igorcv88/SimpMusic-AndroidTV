@@ -232,7 +232,6 @@ fun HomeSectionHeader(
     if (tvDevice) {
         val titleAction: (() -> Unit)? = when {
             channelId != null -> ({ navController.navigate(ArtistDestination(channelId = channelId)) })
-            moreEndpoint != null -> ({ navController.navigateToMoreEndpoint(moreEndpoint, data.title) })
             else -> null
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {

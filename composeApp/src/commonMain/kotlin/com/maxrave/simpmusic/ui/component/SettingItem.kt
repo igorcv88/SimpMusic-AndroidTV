@@ -76,6 +76,7 @@ fun SettingItem(
             // so a row hidden by a condition never leaves a stray line at the top of the card.
             .then(if (tvDevice) Modifier.padding(4.dp).tvFocus(TvFocusStyle.Row, TvShapes.Small) else Modifier)
             .drawBehind {
+                if (tvDevice) return@drawBehind
                 val y = SettingDividerThickness.toPx() / 2
                 val inset = SettingRowPaddingHorizontal.toPx()
                 val rtl = layoutDirection == LayoutDirection.Rtl
@@ -170,6 +171,7 @@ fun SettingGroup(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val cardColor = settingGroupColor()
+    val tvDevice = LocalTvDevice.current
     Column(modifier.fillMaxWidth().padding(top = 24.dp)) {
         Text(
             text = title.toUpperCase(Locale.current),
@@ -181,12 +183,16 @@ fun SettingGroup(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .then(if (!LocalTvDevice.current) Modifier.clip(SettingGroupShape) else Modifier.padding(4.dp))
+                    .then(if (!tvDevice) Modifier.clip(SettingGroupShape) else Modifier.padding(4.dp))
                     .background(cardColor.copy(alpha = 0.5f), SettingGroupShape)
                     .drawWithContent {
                         // The first row's hairline would sit on the card's own edge, so that strip is
                         // left undrawn. Clipped rather than painted over: the card is translucent.
-                        clipRect(top = SettingDividerThickness.toPx()) { this@drawWithContent.drawContent() }
+                        if (tvDevice) {
+                            drawContent()
+                        } else {
+                            clipRect(top = SettingDividerThickness.toPx()) { this@drawWithContent.drawContent() }
+                        }
                     },
             content = content,
         )

@@ -1404,13 +1404,10 @@ private fun HomeAccountButton(
         )
     Box {
         if (LocalTvDevice.current) {
-            var focused by remember { mutableStateOf(false) }
             Box(
                 modifier = modifier
                     .size(44.dp)
                     .tvFocus(TvFocusStyle.Control, CircleShape)
-                    .onFocusChanged { focused = it.isFocused }
-                    .background(if (focused) TvPalette.FocusFill else Color.Transparent, CircleShape)
                     .clickable { menuOpen = true }
                     .padding(3.dp),
                 contentAlignment = Alignment.Center,

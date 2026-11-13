@@ -34,7 +34,7 @@ object TvPalette {
      */
     val GlassBase = Color(0xA60E0E11) // Smoked backing at 65%
 
-    val FocusFill = Color(0x30FFFFFF)
+    val FocusFill = Color(0x18FFFFFF)
     val OnFocus = TextPrimary
 
     /** The end of a scrim gradient; the other end is transparent. */

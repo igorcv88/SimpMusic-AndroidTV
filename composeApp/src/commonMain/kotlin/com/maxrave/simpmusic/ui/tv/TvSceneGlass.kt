@@ -134,10 +134,10 @@ internal class TvGlassCache {
         // Lit from above: bright along the top, faint down the sides, catching light again at the bottom.
         edge =
             Brush.verticalGradient(
-                0f to Color.White.copy(alpha = 0.85f),
-                0.32f to Color.White.copy(alpha = 0.25f),
-                0.75f to Color.White.copy(alpha = 0.10f),
-                1f to Color.White.copy(alpha = 0.35f),
+                0f to Color.White.copy(alpha = 0.48f),
+                0.32f to Color.White.copy(alpha = 0.16f),
+                0.75f to Color.White.copy(alpha = 0.06f),
+                1f to Color.White.copy(alpha = 0.20f),
                 startY = 0f,
                 endY = forSize.height,
             )
@@ -321,7 +321,7 @@ private const val FOCUS_TARGET_LUMINANCE = 0.18f
 private const val MIN_VEIL = 0.08f
 private const val MAX_VEIL = 0.82f
 
-private val SHEEN_TOP = Color.White.copy(alpha = 0.11f)
+private val SHEEN_TOP = Color.White.copy(alpha = 0.06f)
 private const val SHEEN_SHARE = 0.22f
 private val SHEEN_MAX = 40.dp
 private val EDGE_WIDTH = 1.dp

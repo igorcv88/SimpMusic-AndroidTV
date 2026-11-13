@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -95,8 +94,8 @@ import kotlin.reflect.KClass
  * - **Entering lands on the selected destination**, whichever row focus came from; leaving toward
  *   the content goes to [contentFocus], which the app wires to restore the content's last focused
  *   element. Back while the rail has focus does the same instead of leaving the screen.
- * - **Selection and focus are different marks.** The selected destination has the accent dot and
- *   primary-coloured icon; the focused one is the `Control` pill (light fill, dark content, 1.05).
+ * - **Selection and focus are different marks.** The selected destination has brighter icon/text;
+ *   only the focused entry gains a glass surface.
  *
  * Destinations are the app's own [BottomNavScreen] entries, matched by route — `ordinal` is an
  * identity there, not a position — and navigate exactly as `AppNavigationRail` does, so each tab's
@@ -354,7 +353,7 @@ private fun RailBrand(expansion: State<Float>) {
             overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
-                    .padding(start = RAIL_LABEL_GAP)
+                    .padding(start = 12.dp, end = 16.dp)
                     .graphicsLayer { alpha = expansion.value.coerceIn(0f, 1f) },
         )
     }
@@ -377,7 +376,6 @@ private fun RailItem(
             selected -> TvPalette.TextPrimary
             else -> TvPalette.TextSecondary
         }
-    val accent = MaterialTheme.colorScheme.primary
     Row(
         Modifier
             .padding(horizontal = RAIL_ITEM_INSET)
@@ -385,24 +383,12 @@ private fun RailItem(
             .height(TvDimens.RailItemHeight)
             .focusRequester(requester)
             .tvFocus(TvFocusStyle.Control)
-            .controlFill(focused = focused, restFill = if (selected) TvPalette.GlassFill else Color.Transparent)
+            .controlFill(focused = focused, restFill = Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null, role = Role.Tab, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The dot's slot. With the 12 dp inset it puts the 24 dp icon on the centre of the 72 dp strip.
-        Box(
-            Modifier
-                .width(RAIL_DOT_SLOT)
-                .fillMaxHeight()
-                .drawBehind {
-                    if (selected) {
-                        drawCircle(
-                            color = accent,
-                            radius = TvDimens.RailIndicator.toPx() / 2f,
-                        )
-                    }
-                },
-        )
+        // Keep icon centres stable as the panel opens; selection is the icon/text tone.
+        Spacer(Modifier.width(RAIL_ICON_INSET))
         CompositionLocalProvider(LocalContentColor provides contentColor) {
             Box(Modifier.size(RAIL_ICON_SIZE), contentAlignment = Alignment.Center) { icon() }
         }
@@ -440,7 +426,7 @@ private val RAIL_PANEL_INSET = 8.dp
 private val RAIL_SCRIM_FADE = 160.dp
 private val RAIL_ITEM_INSET = 20.dp
 private val RAIL_ITEM_GAP = 8.dp
-private val RAIL_DOT_SLOT = 4.dp
+private val RAIL_ICON_INSET = 4.dp
 private val RAIL_ICON_SIZE = 24.dp
 private val RAIL_LABEL_GAP = 16.dp
-private val RAIL_BRAND_SIZE = 40.dp
+private val RAIL_BRAND_SIZE = 32.dp
