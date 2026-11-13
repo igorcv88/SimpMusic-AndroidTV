@@ -206,6 +206,7 @@ private class TvFocusLayerNode(
     }
 
     override fun onFocusEvent(focusState: FocusState) {
+        if (!isAttached) return
         val focused = focusState.isFocused
         if (focused == state.active) return
         if (focused) {
@@ -259,6 +260,7 @@ private class TvFocusLayerNode(
     override fun onDetach() {
         animation?.cancel()
         velocity = 0f
+        state.reset()
     }
 }
 
@@ -307,6 +309,7 @@ private class TvFocusDrawNode(
 
     // Only a showing focus surface is redrawn when it moves; the rest draw nothing.
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        if (!isAttached || !coordinates.isAttached) return
         if (placement.update(coordinates) && state.shownProgress() > 0.001f) invalidateDraw()
     }
 
@@ -322,8 +325,10 @@ private class TvFocusDrawNode(
 
     /** Called by [TvGlowAnchorNode] whenever the artwork is placed. */
     fun onGlowAnchorPlaced(anchor: LayoutCoordinates) {
-        if (!isAttached) return
-        val bounds = requireLayoutCoordinates().localBoundingBoxOf(anchor, clipBounds = false)
+        if (!isAttached || !anchor.isAttached) return
+        val coordinates = requireLayoutCoordinates()
+        if (!coordinates.isAttached) return
+        val bounds = coordinates.localBoundingBoxOf(anchor, clipBounds = false)
         if (bounds != state.glowBounds) {
             state.glowBounds = bounds
             clearOutline()
@@ -429,6 +434,9 @@ private class TvGlowAnchorNode :
     Modifier.Node(),
     LayoutAwareModifierNode {
     override fun onPlaced(coordinates: LayoutCoordinates) {
+        // Lazy reuse can deliver a queued placement after this modifier has left the tree.
+        // Ancestor traversal itself requires attachment, before the draw-node callback runs.
+        if (!isAttached || !coordinates.isAttached) return
         (findNearestAncestor(TvFocusDrawKey) as? TvFocusDrawNode)?.onGlowAnchorPlaced(coordinates)
     }
 }

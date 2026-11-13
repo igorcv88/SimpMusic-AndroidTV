@@ -68,7 +68,7 @@ open class MainActivity : AppCompatActivity() {
                 service: IBinder?,
             ) {
 //                mediaPlayerHandler.setActivitySession(this@MainActivity, MainActivity::class.java, service)
-                setServiceActivitySession(this@MainActivity, MainActivity::class.java, service)
+                setServiceActivitySession(this@MainActivity, this@MainActivity.javaClass, service)
                 Logger.w("MainActivity", "onServiceConnected: ")
                 mBound = true
             }
