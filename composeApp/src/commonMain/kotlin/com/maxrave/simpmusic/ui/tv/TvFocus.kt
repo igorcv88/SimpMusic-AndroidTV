@@ -56,10 +56,10 @@ import kotlin.math.max
  * How a focused element is marked on TV (spec, "Focus"). Focus is shown by scale, light and
  * elevation and a fine translucent rim aligned with the content.
  *
- * - [Card]: artwork cards. Scale 1.025 and a 24 dp glow in the artwork's tint.
+ * - [Card]: artwork cards. Scale 1.025 and a restrained glow inside the reserved artwork gutter.
  * - [Control]: buttons, chips, rail and top-bar items. Scale 1.015 and the scene glass (see
  *   `TvSceneGlass.kt`) in the control's shape; the control keeps only its rest fill.
- * - [Row]: list rows. Scale 1.008 and the scene glass in the row's shape.
+ * - [Row]: list rows. No scale and the scene glass in the row's shape.
  * - [Backing]: call sites that name no style (`tvFocusIndicator()`). Scale 1.015 and the scene glass.
  */
 enum class TvFocusStyle { Card, Control, Row, Backing }
@@ -68,7 +68,7 @@ fun focusScaleFor(style: TvFocusStyle): Float =
     when (style) {
         TvFocusStyle.Card -> 1.025f
         TvFocusStyle.Control -> 1.015f
-        TvFocusStyle.Row -> 1.008f
+        TvFocusStyle.Row -> 1f
         TvFocusStyle.Backing -> 1.015f
     }
 
@@ -433,9 +433,9 @@ private class TvGlowAnchorNode :
     }
 }
 
-private const val CARD_GLOW_ALPHA = 0.16f
+private const val CARD_GLOW_ALPHA = 0.07f
 private const val HALO_RINGS = 12
-private val CARD_GLOW_DROP = 4.dp
+private val CARD_GLOW_DROP = 1.dp
 private val TV_CARD_CORNER = 16.dp
 private val TV_BACKING_MAX_CORNER = 16.dp
 

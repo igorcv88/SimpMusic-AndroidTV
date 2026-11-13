@@ -48,6 +48,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.LocalTextStyle
+import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
+import com.maxrave.simpmusic.ui.tv.TvDimens
+import com.maxrave.simpmusic.ui.tv.tvSceneGlass
+import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
@@ -522,8 +526,7 @@ fun PlaylistScreen(
                                                     Row(
                                                         modifier =
                                                             Modifier
-                                                                .height(48.dp)
-                                                                .liquidGlass(artworkBackdrop, RoundedCornerShape(24.dp)),
+                                                                .playlistActionCluster(artworkBackdrop),
                                                         verticalAlignment = Alignment.CenterVertically,
                                                     ) {
                                                         if (!data.isRadio) {
@@ -532,7 +535,7 @@ fun PlaylistScreen(
                                                                 contentAlignment = Alignment.Center,
                                                             ) {
                                                                 HeartCheckBox(
-                                                                    size = 28,
+                                                                    size = if (LocalTvDevice.current) 48 else 28,
                                                                     checked = liked,
                                                                     onStateChange = {
                                                                         viewModel.onUIEvent(PlaylistUIEvent.Favorite)
@@ -541,13 +544,15 @@ fun PlaylistScreen(
                                                             }
                                                         }
                                                         IconButton(
+                                                            modifier = Modifier.tvFocusIndicator(CircleShape),
                                                             onClick = {
                                                                 showSearchBar = !showSearchBar
                                                             },
                                                         ) {
-                                                            Icon(SimpIcons.Search, null, tint = Color.White)
+                                                            Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                                                         }
                                                         IconButton(
+                                                            modifier = Modifier.tvFocusIndicator(CircleShape),
                                                             onClick = onPlaylistMoreClick,
                                                         ) {
                                                             Icon(
@@ -822,8 +827,7 @@ fun PlaylistScreen(
                                                             .align(Alignment.TopEnd)
                                                             .windowInsetsPadding(WindowInsets.statusBars)
                                                             .padding(end = 32.dp, top = 16.dp)
-                                                            .height(48.dp)
-                                                            .liquidGlass(headerBackdrop, RoundedCornerShape(24.dp)),
+                                                            .playlistActionCluster(headerBackdrop),
                                                     verticalAlignment = Alignment.CenterVertically,
                                                 ) {
                                                     if (!data.isRadio) {
@@ -832,7 +836,7 @@ fun PlaylistScreen(
                                                             contentAlignment = Alignment.Center,
                                                         ) {
                                                             HeartCheckBox(
-                                                                size = 28,
+                                                                size = if (LocalTvDevice.current) 48 else 28,
                                                                 checked = liked,
                                                                 onStateChange = {
                                                                     viewModel.onUIEvent(PlaylistUIEvent.Favorite)
@@ -841,13 +845,15 @@ fun PlaylistScreen(
                                                         }
                                                     }
                                                     IconButton(
+                                                        modifier = Modifier.tvFocusIndicator(CircleShape),
                                                         onClick = {
                                                             showSearchBar = !showSearchBar
                                                         },
                                                     ) {
-                                                        Icon(SimpIcons.Search, null, tint = Color.White)
+                                                        Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                                                     }
                                                     IconButton(
+                                                        modifier = Modifier.tvFocusIndicator(CircleShape),
                                                         onClick = onPlaylistMoreClick,
                                                     ) {
                                                         Icon(
@@ -1234,6 +1240,7 @@ fun PlaylistScreen(
                             ) {
                             }
                             IconButton(
+                                modifier = Modifier.tvFocusIndicator(CircleShape),
                                 onClick = {
                                     showSearchBar = !showSearchBar
                                 },
@@ -1376,11 +1383,12 @@ fun PlaylistScreen(
                         },
                         actions = {
                             IconButton(
+                                modifier = Modifier.tvFocusIndicator(CircleShape),
                                 onClick = {
                                     showSearchBar = !showSearchBar
                                 },
                             ) {
-                                Icon(SimpIcons.Search, null, tint = Color.White)
+                                Icon(SimpIcons.Search, if (LocalTvDevice.current) "Search playlist" else null, tint = Color.White)
                             }
                         },
                         colors =
@@ -1411,3 +1419,13 @@ fun PlaylistScreen(
         }
     }
 }
+/** Reserve space for all child rims; the TV background never clips its children. */
+@Composable
+private fun Modifier.playlistActionCluster(backdrop: PlatformBackdrop): Modifier =
+    if (LocalTvDevice.current) {
+        height(TvDimens.PlaylistActionClusterHeight)
+            .tvSceneGlass(shape = RoundedCornerShape(28.dp))
+            .padding(TvDimens.PlaylistActionGutter)
+    } else {
+        height(48.dp).liquidGlass(backdrop, RoundedCornerShape(24.dp))
+    }

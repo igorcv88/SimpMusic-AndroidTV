@@ -505,6 +505,10 @@ private fun AppContent(
     }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val tvSceneForRoute = com.maxrave.simpmusic.ui.tv.LocalTvScene.current
+    androidx.compose.runtime.SideEffect {
+        tvSceneForRoute?.artworkAllowed = tvDevice && navBackStackEntry?.destination?.hasRoute(com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination::class) == true
+    }
     LaunchedEffect(navBackStackEntry) {
         Logger.d("MainActivity", "Current destination: ${navBackStackEntry?.destination?.route}")
         if (navBackStackEntry?.destination?.route?.contains("FullscreenDestination") == true) {

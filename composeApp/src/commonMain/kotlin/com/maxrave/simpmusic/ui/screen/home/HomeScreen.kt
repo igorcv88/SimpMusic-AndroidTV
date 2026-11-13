@@ -1216,8 +1216,9 @@ fun HomeScreen(
                             .height(56.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.padding(start = 16.dp, end = 12.dp).focusRequester(tvProfileFocus).then(if (tvDevice) Modifier.focusProperties { left = tvRailFocus } else Modifier)) {
+                    Box(Modifier.padding(start = 16.dp, end = 12.dp)) {
                         HomeAccountButton(
+                            modifier = if (tvDevice) Modifier.focusRequester(tvProfileFocus).focusProperties { left = tvRailFocus } else Modifier,
                             accountName = accountInfo?.first,
                             thumbnailUrl = accountInfo?.second,
                             navController = navController,
@@ -1242,6 +1243,7 @@ fun HomeScreen(
                                     .mouseDragScroll(chipRowState)
                                     .horizontalScroll(chipRowState)
                                     .widthIn(min = maxWidth)
+                                    .then(if (tvDevice) Modifier.padding(horizontal = 4.dp, vertical = 4.dp) else Modifier)
                                     .padding(end = if (createPinned) 0.dp else 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
@@ -1384,6 +1386,7 @@ private fun HomeAccountButton(
     accountName: String?,
     thumbnailUrl: String?,
     navController: NavController,
+    modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Sign-out blanks the stored account name, so a blank name is the signed-out state.
@@ -1403,7 +1406,7 @@ private fun HomeAccountButton(
         if (LocalTvDevice.current) {
             var focused by remember { mutableStateOf(false) }
             Box(
-                modifier = Modifier
+                modifier = modifier
                     .size(44.dp)
                     .tvFocus(TvFocusStyle.Control, CircleShape)
                     .onFocusChanged { focused = it.isFocused }
@@ -1614,6 +1617,7 @@ fun QuickPicks(
             verticalArrangement = Arrangement.spacedBy(if (LocalTvDevice.current) 6.dp else 0.dp),
             horizontalArrangement = Arrangement.spacedBy(if (LocalTvDevice.current) 12.dp else 0.dp),
             state = lazyListState,
+            contentPadding = if (LocalTvDevice.current) PaddingValues(horizontal = 4.dp, vertical = 4.dp) else PaddingValues(0.dp),
             flingBehavior = snapperFlingBehavior,
         ) {
             items(homeItem.contents, key = { it?.videoId ?: it?.playlistId ?: it?.browseId ?: it?.title ?: "empty" }) {

@@ -138,6 +138,11 @@ fun FullscreenPlayer(
         },
     )
 
+    if (LocalTvDevice.current) {
+        TvFullscreenPlayer(navController, sharedViewModel)
+        return
+    }
+
     val nowPlayingState by sharedViewModel.nowPlayingScreenData.collectAsStateWithLifecycle()
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
     val timelineState by sharedViewModel.timeline.collectAsStateWithLifecycle()

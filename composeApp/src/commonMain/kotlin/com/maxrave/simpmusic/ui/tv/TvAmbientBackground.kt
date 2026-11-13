@@ -63,6 +63,8 @@ fun TvAmbientBackground(
 ) {
     val motion = LocalTvMotion.current
     val model = ambientImageModel(artworkUrl)
+    val scene = LocalTvScene.current
+    androidx.compose.runtime.SideEffect { scene?.beginArtwork(model) }
     Box(
         modifier
             .fillMaxSize()
@@ -133,7 +135,7 @@ private fun AmbientPicture(
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
         // The same blurred bitmap becomes the body of every glass surface (TvSceneGlass).
-        onSuccess = { state -> scene?.let { state.result.image.publishTo(it) } },
+        onSuccess = { state -> scene?.takeIf { it.acceptsArtwork(model) }?.let { state.result.image.publishTo(it) } },
         filterQuality = FilterQuality.High,
         alpha = AMBIENT_ALPHA,
         modifier = modifier,

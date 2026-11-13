@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.component
 
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwitchDefaults
+import com.maxrave.simpmusic.ui.tv.LocalTvDevice
+import com.maxrave.simpmusic.ui.tv.TvFocusStyle
+import com.maxrave.simpmusic.ui.tv.TvShapes
+import com.maxrave.simpmusic.ui.tv.tvFocus
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +63,7 @@ fun SettingItem(
     // row at all, so it could not do the job it existed for. Clearing a child flag now belongs to the
     // logout that invalidates it (SettingsViewModel: setSpotifyLogIn, logOutDiscord, logOutLastfm,
     // setUsedAccount, logOutAllYouTube, setAIApiKey), which is a real event and cannot misfire.
+    val tvDevice = LocalTvDevice.current
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     // The disabled colour the sheets use (SurfaceDarkColors.disabled). TextStyle.greyScale() alone
     // left a disabled title as bright as an enabled one, because the title passes its own colour,
@@ -67,6 +74,7 @@ fun SettingItem(
             // Rows separate themselves: a hairline along the top, from where the text starts to the
             // card's far edge (mirrored right-to-left). SettingGroup leaves the first row's undrawn,
             // so a row hidden by a condition never leaves a stray line at the top of the card.
+            .then(if (tvDevice) Modifier.padding(4.dp).tvFocus(TvFocusStyle.Row, TvShapes.Small) else Modifier)
             .drawBehind {
                 val y = SettingDividerThickness.toPx() / 2
                 val inset = SettingRowPaddingHorizontal.toPx()
@@ -78,7 +86,9 @@ fun SettingItem(
                     strokeWidth = SettingDividerThickness.toPx(),
                 )
             }.then(
-                if (onClick != null && isEnable) {
+                if (tvDevice && switch != null && isEnable) {
+                    Modifier.toggleable(value = switch.first, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = switch.second)
+                } else if (onClick != null && isEnable) {
                     Modifier.clickable { onClick.invoke() }
                 } else {
                     Modifier
@@ -131,11 +141,16 @@ fun SettingItem(
             if (switch != null) {
                 Spacer(Modifier.width(10.dp))
                 Switch(
-                    modifier = Modifier.wrapContentWidth().tvFocusIndicator(),
+                    modifier = if (tvDevice) Modifier.wrapContentWidth() else Modifier.wrapContentWidth().tvFocusIndicator(),
                     checked = switch.first,
-                    onCheckedChange = {
-                        switch.second.invoke(it)
-                    },
+                    onCheckedChange = if (tvDevice) null else { value -> switch.second.invoke(value) },
+                    colors = if (tvDevice) SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                        uncheckedThumbColor = Color.LightGray,
+                        uncheckedTrackColor = Color.DarkGray,
+                        uncheckedBorderColor = Color.Gray,
+                    ) else SwitchDefaults.colors(),
                     enabled = isEnable,
                 )
             }
@@ -166,8 +181,8 @@ fun SettingGroup(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clip(SettingGroupShape)
-                    .background(cardColor.copy(alpha = 0.5f))
+                    .then(if (!LocalTvDevice.current) Modifier.clip(SettingGroupShape) else Modifier.padding(4.dp))
+                    .background(cardColor.copy(alpha = 0.5f), SettingGroupShape)
                     .drawWithContent {
                         // The first row's hairline would sit on the card's own edge, so that strip is
                         // left undrawn. Clipped rather than painted over: the card is translucent.

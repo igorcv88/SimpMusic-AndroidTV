@@ -2101,6 +2101,7 @@ fun HeartCheckBox(
                 // Before .clip: the burst draws outside the button bounds and the circle clip
                 // would trim it to the heart's own circle.
                 .heartBurst(burstState)
+                .tvFocusIndicator(CircleShape)
                 .clip(CircleShape)
                 .clickable {
                     // Judged at TAP time: tapping an unchecked heart is a like. Firing from the

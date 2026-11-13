@@ -46,13 +46,27 @@ import kotlin.math.roundToInt
  * The picture every TV glass surface is made of: the ambient artwork, already blurred off the main
  * thread (see `ambientBlur`). The ambient background publishes it; glass surfaces draw the part of
  * it that lies behind them, so a panel, a focused row and the rail all carry the colour and light
- * of the same scene instead of a flat grey fill.
+ * of the eligible visible scene. Other destinations use a neutral drawn material.
  *
  * Nothing is blurred, captured or decoded for a glass surface: it draws one clipped copy of a
  * bitmap that already exists. That is why the material is the same on API 30 as on 34.
  */
 @Stable
 class TvScene {
+    /** Only the destination actually drawing this artwork may sample it. */
+    var artworkAllowed by mutableStateOf(false)
+    private var requestedArtwork: String? = null
+    val canSampleArtwork: Boolean get() = artworkAllowed && image != null
+
+    fun beginArtwork(model: String?) {
+        if (requestedArtwork == model) return
+        requestedArtwork = model
+        // Retain neither the previous tint nor its luminance during an asynchronous load.
+        show(null, 0f)
+    }
+
+    fun acceptsArtwork(model: String): Boolean = requestedArtwork == model
+
     var image: ImageBitmap? by mutableStateOf(null)
         private set
 
@@ -73,8 +87,7 @@ val LocalTvScene = staticCompositionLocalOf<TvScene?> { null }
 
 /**
  * - [Panel]: a standing surface (the open rail, a menu, a dialog). Always drawn.
- * - [Focus]: the surface a focused control or row gains. Brighter and richer than a panel, so focus
- *   reads as the glass itself lifting, never as a white veil.
+ * - [Focus]: the neutral translucent surface a focused control or row gains.
  */
 enum class TvGlassKind { Panel, Focus }
 
@@ -133,7 +146,7 @@ internal class TvGlassCache {
 }
 
 /**
- * Draws the glass in [outline], back to front: the scene behind it (screen-aligned, saturated),
+ * Draws the glass in [outline], back to front: the scene behind it (screen-aligned, desaturated),
  * the legibility veil, a thin gloss under the top edge, and the specular rim.
  *
  * With no scene yet (nothing has played or been focused) it falls back to the drawn material: a
@@ -156,7 +169,7 @@ internal fun DrawScope.drawSceneGlass(
     if (alpha <= 0.001f) return
     cache.prepare(this, outline, forSize)
     val focused = kind == TvGlassKind.Focus
-    val image = scene?.image
+    val image = scene?.image?.takeIf { scene.canSampleArtwork }
     val path = cache.path
     if (image != null && path != null && root.width >= 1f && root.height >= 1f) {
         if (!focused) drawOutline(outline, TvPalette.Background, alpha = alpha)
@@ -292,15 +305,14 @@ private fun glassFilter(
     return ColorFilter.colorMatrix(matrix)
 }
 
-// Saturation above 1: a wide blur averages unlike hues into grey, and the boost gives the scene's
-// colour back. Focus lifts the same glass, brighter and richer.
+// A subdued contribution follows the eligible background without pigmenting the focus surface.
 private const val REST_BRIGHTNESS = 1.10f
 private const val FOCUS_BRIGHTNESS = 1.26f
-private val RestFilter = glassFilter(saturation = 1.45f, brightness = REST_BRIGHTNESS)
-private val FocusFilter = glassFilter(saturation = 1.65f, brightness = FOCUS_BRIGHTNESS)
+private val RestFilter = glassFilter(saturation = 0.45f, brightness = REST_BRIGHTNESS)
+private val FocusFilter = glassFilter(saturation = 0.45f, brightness = FOCUS_BRIGHTNESS)
 
-private const val PANEL_SCENE_SHARE = 0.92f
-private const val FOCUS_SCENE_SHARE = 0.96f
+private const val PANEL_SCENE_SHARE = 0.18f
+private const val FOCUS_SCENE_SHARE = 0.16f
 private const val PANEL_EDGE_ALPHA = 0.78f
 
 // White text needs 4.5:1; over a surface at 0.18 relative luminance it has about 4.6:1.
@@ -312,7 +324,7 @@ private const val MAX_VEIL = 0.82f
 private val SHEEN_TOP = Color.White.copy(alpha = 0.11f)
 private const val SHEEN_SHARE = 0.22f
 private val SHEEN_MAX = 40.dp
-private val EDGE_WIDTH = 1.2.dp
+private val EDGE_WIDTH = 1.dp
 
 private const val PANEL_SHADOW_RINGS = 12
 private const val PANEL_SHADOW_ALPHA = 0.30f
