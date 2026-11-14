@@ -2,20 +2,20 @@ package com.maxrave.simpmusic.ui.screen.other
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade as Crossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.ui.text.input.ImeAction
 import com.maxrave.simpmusic.ui.tv.LocalTvNavigation
 import com.maxrave.simpmusic.ui.tv.LocalTvDestination
 import androidx.compose.foundation.background
@@ -1077,7 +1077,8 @@ fun SearchScreen(
                         .windowInsetsPadding(WindowInsets.statusBars)
                         .padding(vertical = 10.dp),
             ) {
-        AnimatedVisibility(visible = selectionState.isActive) {
+        AnimatedVisibility(visible = selectionState.isActive,
+            enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
             SongSelectionTopAppBar(
                 state = selectionState,
                 onSelectAll = {
@@ -1141,44 +1142,22 @@ fun SearchScreen(
             LaunchedEffect(searchText) {
                 if (fieldState.text.toString() != searchText) fieldState.setTextAndPlaceCursorAtEnd(searchText)
             }
-            OutlinedTextField(
+            com.maxrave.simpmusic.ui.tv.TvSearchField(
                 state = fieldState,
+                placeholder = placeholderTexts[0],
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
                     .fillMaxWidth(0.78f)
                     .widthIn(max = 800.dp)
                     .focusRequester(focusRequester)
                     .focusProperties { down = searchContentFocus }
-                    .tvTextInput(onActivate = {
-                        isExpanded = true
-                        isSearchSubmitted = false
-                    })
                     .onFocusChanged { isFocused = it.isFocused }
                     .onGloballyPositioned { fieldPlaced = true },
-                lineLimits = TextFieldLineLimits.SingleLine,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, showKeyboardOnFocus = false),
-                onKeyboardAction = {
-                    keyboardController?.hide()
-                    submitSearch(fieldState.text.toString())
+                onActivate = {
+                    isExpanded = true
+                    isSearchSubmitted = false
                 },
-                placeholder = { Text(placeholderTexts[0], style = typo().labelMedium) },
-                leadingIcon = { Icon(SimpIcons.Search, contentDescription = null) },
-                shape = com.maxrave.simpmusic.ui.tv.TvShapes.Control,
-                // A quiet glass well at rest; focus is the scene glass tvTextInput draws under it,
-                // so the Material outline (the theme's blue) would only double the rim.
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = com.maxrave.simpmusic.ui.tv.TvPalette.GlassFill,
-                    cursorColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
-                    focusedTextColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
-                    unfocusedTextColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
-                    focusedPlaceholderColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
-                    unfocusedPlaceholderColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
-                    focusedLeadingIconColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextPrimary,
-                    unfocusedLeadingIconColor = com.maxrave.simpmusic.ui.tv.TvPalette.TextSecondary,
-                ),
+                onSearch = submitSearch,
             )
         } else
         // Search Bar with Animated Placeholder
@@ -1293,7 +1272,8 @@ fun SearchScreen(
                 // Filter chips ride along inside the blurred block instead of sitting in the
                 // results branch. That way searchBarHeight covers them too, results scroll
                 // underneath the whole thing, and the glass has something to blur.
-                AnimatedVisibility(visible = searchUIType == SearchUIType.SEARCH_RESULTS) {
+                AnimatedVisibility(visible = searchUIType == SearchUIType.SEARCH_RESULTS,
+                    enter = tvBackdropEnter(fadeIn() + expandVertically()), exit = tvBackdropExit(fadeOut() + shrinkVertically())) {
                     Row(
                         modifier =
                             Modifier

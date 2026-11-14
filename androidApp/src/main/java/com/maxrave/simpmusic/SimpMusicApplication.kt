@@ -102,7 +102,10 @@ class SimpMusicApplication :
             .logErrorOnRestart(false) // default: true
             .trackActivities(true) // default: false
             .minTimeBetweenCrashesMs(2000) // default: 3000 //default: bug image
-            .restartActivity(MainActivity::class.java) // default: null (your app's launch activity)
+            // TV declares CAOC's RESTART action on its real shell Activity. Mobile uses its
+            // normal launcher. A phone class reference cannot address the TV manifest alias
+            // after R8 renames that unused class.
+            .restartActivity(null)
             .apply()
 
         @SuppressLint("DiscouragedPrivateApi")

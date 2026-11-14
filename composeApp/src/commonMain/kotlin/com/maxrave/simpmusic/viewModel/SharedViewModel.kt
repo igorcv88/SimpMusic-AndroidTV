@@ -33,6 +33,8 @@ import com.maxrave.domain.data.model.streams.TimeLine
 import com.maxrave.domain.data.model.update.UpdateData
 import com.maxrave.domain.data.player.GenericCastState
 import com.maxrave.domain.data.player.LiveStreamRegistry
+import com.maxrave.domain.data.player.RenditionSwitchResult
+import com.maxrave.domain.data.player.RenditionSwitchToken
 import com.maxrave.domain.extension.decodeHtmlEntities
 import com.maxrave.domain.extension.isSong
 import com.maxrave.domain.extension.isVideo
@@ -109,6 +111,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.CancellationException
 import org.jetbrains.compose.resources.getString
 import org.koin.core.component.inject
 import org.simpmusic.lastfm.completeLogin
@@ -238,6 +242,80 @@ class SharedViewModel(
     val controllerState: StateFlow<ControlState> = _controllerState
     private val _getVideo: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val getVideo: StateFlow<Boolean> = _getVideo
+
+    private val _tvRenditionSwitch = MutableStateFlow(TvRenditionSwitchState())
+    private var tvRenditionJob: Job? = null
+    private var tvRenditionRequest = 0L
+    val tvRenditionSwitch: StateFlow<TvRenditionSwitchState> = _tvRenditionSwitch
+    val activeVideo: StateFlow<Boolean?> get() = mediaPlayerHandler.player.activeVideo
+
+    fun cancelTvRenditionIfTrackChanged(mediaId: String?) {
+        if (_tvRenditionSwitch.value.mediaId != mediaId) {
+            tvRenditionRequest++
+            tvRenditionJob?.cancel()
+            _tvRenditionSwitch.value = TvRenditionSwitchState()
+        }
+    }
+
+    /** TV only: resolve an exact official link, then ask the backend to confirm the source. */
+    fun switchTvRendition() {
+        val player = mediaPlayerHandler.player
+        val current = player.currentMediaItem ?: return
+        cancelTvRenditionIfTrackChanged(current.mediaId)
+        if (_tvRenditionSwitch.value.phase == TvRenditionSwitchPhase.Pending) return
+        val expected = RenditionSwitchToken(player.currentMediaItemIndex, current, player.playbackRevision)
+        if (castState.value.isRemote || LiveStreamRegistry.isLive(current.mediaId)) {
+            _tvRenditionSwitch.value = TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Unsupported)
+            return
+        }
+        // Known track type takes precedence over old thumbnail-based metadata guesses.
+        val knownType = _nowPlayingState.value?.track?.takeIf { it.videoId == current.mediaId }?.videoType
+        val toVideo = if (com.maxrave.domain.utils.MusicVideoType.isKnown(knownType)) {
+            com.maxrave.domain.utils.MusicVideoType.isAudio(knownType)
+        } else !current.isVideo()
+        _tvRenditionSwitch.value = TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Pending)
+        val request = ++tvRenditionRequest
+        tvRenditionJob = viewModelScope.launch {
+            fun publish(state: TvRenditionSwitchState) {
+                if (request == tvRenditionRequest) _tvRenditionSwitch.value = state
+            }
+            var accountWatch: Job? = null
+            try {
+                val account = dataStoreManager.cookie.first()
+                val requestJob = coroutineContext[Job]!!
+                accountWatch = launch {
+                    dataStoreManager.cookie.collect { if (it != account) requestJob.cancel() }
+                }
+                val target = withTimeout(15_000) { songRepository.getOfficialCounterpart(current.mediaId, toVideo) }
+                if (!expected.matches(player.currentMediaItemIndex, player.currentMediaItem, player.playbackRevision) || account != dataStoreManager.cookie.first()) {
+                    publish(TvRenditionSwitchState())
+                    return@launch
+                }
+                if (target == null) {
+                    publish(TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Unavailable))
+                    return@launch
+                }
+                val result = mediaPlayerHandler.switchRendition(expected, target, toVideo)
+                publish(when (result) {
+                    RenditionSwitchResult.Success, RenditionSwitchResult.Stale -> TvRenditionSwitchState()
+                    RenditionSwitchResult.Unavailable -> TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Unavailable)
+                    RenditionSwitchResult.Unsupported -> TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Unsupported)
+                    else -> TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Error)
+                })
+            } catch (cancelled: CancellationException) {
+                if (cancelled is kotlinx.coroutines.TimeoutCancellationException) {
+                    publish(TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Error))
+                } else {
+                    publish(TvRenditionSwitchState())
+                    throw cancelled
+                }
+            } catch (error: Exception) {
+                publish(TvRenditionSwitchState(current.mediaId, TvRenditionSwitchPhase.Error))
+            } finally {
+                accountWatch?.cancel()
+            }
+        }
+    }
 
     private var _timeline =
         MutableStateFlow<TimeLine>(

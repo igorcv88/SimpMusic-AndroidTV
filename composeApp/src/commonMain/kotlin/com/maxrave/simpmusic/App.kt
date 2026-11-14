@@ -115,6 +115,7 @@ import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.ui.tv.TvGlassTier
 import com.maxrave.simpmusic.ui.tv.TvNavigationRail
+import com.maxrave.simpmusic.ui.tv.tvBackdropSource
 import com.maxrave.simpmusic.ui.tv.tvGlassTier
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.utils.isAppLinkAvailable
@@ -506,6 +507,10 @@ private fun AppContent(
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val tvSceneForRoute = com.maxrave.simpmusic.ui.tv.LocalTvScene.current
+    val tvBackdrop = com.maxrave.simpmusic.ui.tv.rememberTvBackdrop(
+        tvSceneForRoute, navBackStackEntry?.id,
+        tvDevice && !isInFullscreen && tvGlassTier() == TvGlassTier.Drawn,
+    )
     androidx.compose.runtime.SideEffect {
         tvSceneForRoute?.artworkAllowed = tvDevice && navBackStackEntry?.destination?.hasRoute(com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination::class) == true
     }
@@ -762,8 +767,8 @@ private fun AppContent(
                                     ),
                             ) {
                                 // What the tablet capsule's glass samples. A TV hides that capsule; its
-                                // only reader there is the open rail, and only where the device can blur
-                                // at all, so on API 30 nothing is recorded.
+                                // accelerated reader there is the open rail. API 30 uses the separate
+                                // isolated software source below instead of the Kyant recording.
                                 val recordTabletBackdrop =
                                     isLiquidGlassEnabled == TRUE && !isDesktopShell && isTablet && !isInFullscreen &&
                                         (!tvDevice || tvGlassTier() != TvGlassTier.Drawn)
@@ -821,6 +826,7 @@ private fun AppContent(
                                     Box(
                                         Modifier
                                             .fillMaxSize()
+                                            .tvBackdropSource(tvBackdrop)
                                             .then(
                                                 // Tablets record the capsule's source here; Desktop records it on
                                                 // the Row above, which takes in the sidebar as well.
@@ -851,6 +857,7 @@ private fun AppContent(
                                             ),
                                     ) {
                                         CompositionLocalProvider(
+                                            com.maxrave.simpmusic.ui.tv.LocalTvBackdropOverlay provides tvBackdrop,
                                             LocalAppDialogOpen provides appDialogOpen,
                                             LocalNowPlayingOpen provides isShowNowPlaylistScreen,
                                             LocalUserStarted provides userStarted,
@@ -873,6 +880,7 @@ private fun AppContent(
                                             )
                                         }
                                     }
+                                    com.maxrave.simpmusic.ui.tv.TvBackdropOverlays(tvBackdrop, Modifier.matchParentSize())
                                     if (!isDesktopShell) {
                                         tabletMiniPlayer(Modifier.padding(innerPadding).align(Alignment.BottomCenter))
                                     }

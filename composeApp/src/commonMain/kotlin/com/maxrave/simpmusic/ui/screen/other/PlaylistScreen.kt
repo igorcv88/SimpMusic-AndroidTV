@@ -6,6 +6,9 @@ import com.maxrave.simpmusic.ui.tv.TvShapes
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -361,7 +364,7 @@ fun PlaylistScreen(
         )
     }
 //    Box {
-    Crossfade(
+    TvBackdropCrossfade(
         targetState = uiState,
     ) { state ->
         Logger.w(tag, "State hash: ${state.hashCode()}")
@@ -369,7 +372,7 @@ fun PlaylistScreen(
             is PlaylistUIState.Success -> {
                 val data = state.data
                 Logger.d(tag, "data: $data")
-                if (data == null) return@Crossfade
+                if (data == null) return@TvBackdropCrossfade
                 val hazeState =
                     rememberHazeState()
                 LazyColumn(
@@ -1183,8 +1186,8 @@ fun PlaylistScreen(
 
                 AnimatedVisibility(
                     visible = showSearchBar,
-                    enter = SearchBarEnter,
-                    exit = SearchBarExit,
+                    enter = tvBackdropEnter(SearchBarEnter),
+                    exit = tvBackdropExit(SearchBarExit),
                 ) {
                     Box(
                         Modifier
@@ -1253,8 +1256,8 @@ fun PlaylistScreen(
 
                 AnimatedVisibility(
                     visible = selectionState.isActive,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically(),
+                    enter = tvBackdropEnter(fadeIn() + slideInVertically()),
+                    exit = tvBackdropExit(fadeOut() + slideOutVertically()),
                 ) {
                     SongSelectionTopAppBar(
                         state = selectionState,
@@ -1306,7 +1309,7 @@ fun PlaylistScreen(
                     )
                 }
                 if (itemBottomSheetShow && currentItem != null) {
-                    val track = currentItem?.toSongEntity() ?: return@Crossfade
+                    val track = currentItem?.toSongEntity() ?: return@TvBackdropCrossfade
                     NowPlayingBottomSheet(
                         onDismiss = {
                             itemBottomSheetShow = false
@@ -1343,8 +1346,8 @@ fun PlaylistScreen(
                 }
                 AnimatedVisibility(
                     visible = shouldHideTopBar && !showSearchBar && !selectionState.isActive,
-                    enter = fadeIn() + slideInVertically(),
-                    exit = fadeOut() + slideOutVertically(),
+                    enter = tvBackdropEnter(fadeIn() + slideInVertically()),
+                    exit = tvBackdropExit(fadeOut() + slideOutVertically()),
                 ) {
                     TopAppBar(
                         windowInsets =

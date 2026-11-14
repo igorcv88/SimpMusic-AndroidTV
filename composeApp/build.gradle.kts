@@ -189,6 +189,9 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+        jvmTest.dependencies {
+            implementation("org.jetbrains.compose.ui:ui-test:${libs.versions.composeMultiplatform.get()}")
+        }
         jvmMain.dependencies {
             // Desktop app entry (main.kt), jpackage/Conveyor
             // packaging, and tray icon live in :desktopApp per the

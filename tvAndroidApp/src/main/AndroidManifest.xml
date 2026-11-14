@@ -95,6 +95,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="cat.ereza.customactivityoncrash.RESTART" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
         <!-- Existing service PendingIntents and crash restart resolve to the TV shell. -->
         <activity-alias android:name=".MainActivity" android:targetActivity=".tv.TvActivity"

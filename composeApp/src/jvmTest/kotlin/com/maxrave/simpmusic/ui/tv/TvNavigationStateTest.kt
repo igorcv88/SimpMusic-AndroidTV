@@ -3,6 +3,25 @@ package com.maxrave.simpmusic.ui.tv
 import kotlin.test.*
 
 class TvNavigationStateTest {
+    @Test fun returningToAnotherDestinationClosesRailWhenItsContentIsReady() {
+        val requested = mutableListOf<androidx.compose.ui.focus.FocusRequester>()
+        val navigation = TvNavigationState { requested += it; true }
+        val homeCard = androidx.compose.ui.focus.FocusRequester()
+        navigation.prepare("home", false)
+        navigation.registerEntry("home", homeCard)
+        navigation.resume("search")
+        navigation.railHasFocus = true
+
+        // Back in the rail returns to Home: the old rail must not cover the resumed page.
+        navigation.resume("home")
+        navigation.restoreReady("home")
+        assertTrue(requested.isEmpty())
+        navigation.contentReady("home", true)
+        assertEquals(listOf(homeCard), requested)
+        navigation.restoreReady("home")
+        assertEquals(1, requested.size)
+    }
+
     @Test fun railSelectionWaitsForDestinationAndThenMovesFocusExactlyOnce() {
         val requested = mutableListOf<androidx.compose.ui.focus.FocusRequester>()
         val navigation = TvNavigationState { requested += it; true }

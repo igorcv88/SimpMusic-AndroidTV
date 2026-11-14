@@ -10,7 +10,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
@@ -30,7 +32,16 @@ import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.ui.tv.*
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
+import com.maxrave.simpmusic.viewModel.TvRenditionSwitchPhase
 import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.stringResource
+import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.tv_switch_music_video
+import simpmusic.composeapp.generated.resources.tv_switch_song
+import simpmusic.composeapp.generated.resources.tv_rendition_pending
+import simpmusic.composeapp.generated.resources.tv_rendition_unavailable
+import simpmusic.composeapp.generated.resources.tv_rendition_unsupported
+import simpmusic.composeapp.generated.resources.tv_rendition_error
 
 /** TV has a single hidden key surface and a footer of visible targets, never touch seek halves. */
 @Composable
@@ -38,6 +49,11 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
     val nowPlaying by sharedViewModel.nowPlayingScreenData.collectAsStateWithLifecycle()
     val controller by sharedViewModel.controllerState.collectAsStateWithLifecycle()
     val timeline by sharedViewModel.timeline.collectAsStateWithLifecycle()
+    val rendition by sharedViewModel.tvRenditionSwitch.collectAsStateWithLifecycle()
+    val playingState by sharedViewModel.nowPlayingState.collectAsStateWithLifecycle()
+    val currentId = playingState?.mediaItem?.mediaId
+    val switching = rendition.phase == TvRenditionSwitchPhase.Pending && rendition.mediaId == currentId
+    LaunchedEffect(currentId) { sharedViewModel.cancelTvRenditionIfTrackChanged(currentId) }
     var visible by rememberSaveable { mutableStateOf(true) }
     var subtitles by rememberSaveable { mutableStateOf(true) }
     var queue by rememberSaveable { mutableStateOf(false) }
@@ -50,8 +66,8 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
     var seekFeedback by remember { mutableStateOf(false) }
     val surface = remember { FocusRequester() }
     val play = remember { FocusRequester() }
-    LaunchedEffect(visible, inputTick, modalOpen) {
-        if (visible && !modalOpen) { delay(5000); visible = false }
+    LaunchedEffect(visible, inputTick, modalOpen, switching) {
+        if (visible && !modalOpen && !switching) { delay(5000); visible = false }
     }
     LaunchedEffect(visible, modalOpen) {
         if (!modalOpen) withFrameNanos { }
@@ -114,6 +130,15 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(nowPlaying.nowPlayingTitle, style = typo().titleMedium, color = Color.White, maxLines = 1)
+                val videoType = playingState?.track?.videoType
+                val videoRendition = if (com.maxrave.domain.utils.MusicVideoType.isKnown(videoType)) {
+                    com.maxrave.domain.utils.MusicVideoType.isVideoSong(videoType)
+                } else nowPlaying.isVideo
+                TvRenditionSwitchControl(
+                    videoRendition,
+                    if (rendition.mediaId == currentId) rendition.phase else TvRenditionSwitchPhase.Idle,
+                    sharedViewModel::switchTvRendition,
+                )
                 val fraction = if (timeline.total > 0) timeline.current.toFloat() / timeline.total else 0f
                 Slider(
                     value = fraction,
@@ -163,6 +188,41 @@ internal fun TvFullscreenPlayer(navController: NavController, sharedViewModel: S
                 onDismiss = { addLyricsFor = null },
             )
         }
+    }
+}
+
+@Composable
+internal fun TvRenditionSwitchControl(
+    videoRendition: Boolean,
+    phase: TvRenditionSwitchPhase,
+    onSwitch: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focus = LocalFocusManager.current
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        TextButton(
+            onClick = { if (phase != TvRenditionSwitchPhase.Pending) onSwitch() },
+            // Keep the focused action mounted while pending; repeat OK is coalesced.
+            modifier = modifier.tvFocus(TvFocusStyle.Control).onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) false
+                else when (event.key) {
+                    Key.DirectionDown -> focus.moveFocus(FocusDirection.Down)
+                    Key.DirectionUp -> focus.moveFocus(FocusDirection.Up)
+                    else -> false
+                }
+            },
+        ) {
+            Text(stringResource(if (videoRendition) Res.string.tv_switch_song else Res.string.tv_switch_music_video), color = Color.White)
+        }
+        if (phase == TvRenditionSwitchPhase.Pending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+        val feedback = when (phase) {
+            TvRenditionSwitchPhase.Pending -> Res.string.tv_rendition_pending
+            TvRenditionSwitchPhase.Unavailable -> Res.string.tv_rendition_unavailable
+            TvRenditionSwitchPhase.Unsupported -> Res.string.tv_rendition_unsupported
+            TvRenditionSwitchPhase.Error -> Res.string.tv_rendition_error
+            else -> null
+        }
+        feedback?.let { Text(stringResource(it), style = typo().bodySmall, color = Color.White) }
     }
 }
 

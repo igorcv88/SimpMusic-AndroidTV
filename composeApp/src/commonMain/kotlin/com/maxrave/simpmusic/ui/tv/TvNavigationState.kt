@@ -59,7 +59,15 @@ class TvNavigationState(private val request: (FocusRequester) -> Boolean = { it.
     }
     fun hasSavedFocus(destination: String?): Boolean = destination != null && saved.containsKey(destination)
     fun focused(destination: String, key: String) { saved[destination] = key }
-    fun resume(destination: String) { activeDestination = destination; pending = destination }
+    fun resume(destination: String) {
+        // Back can pop a destination while the rail still owns focus. Hand it to the resumed
+        // page once ready; a layout/lifecycle refresh of the same entry must keep rail focus.
+        if (railHasFocus && activeDestination != null && activeDestination != destination) {
+            handoffDestination = destination
+        }
+        activeDestination = destination
+        pending = destination
+    }
     fun restoreContent(): Boolean {
         val destination = activeDestination ?: return false
         return requestContentFocus(destination)

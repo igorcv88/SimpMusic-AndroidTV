@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
@@ -232,7 +233,6 @@ fun HomeSectionHeader(
     if (tvDevice) {
         val titleAction: (() -> Unit)? = when {
             channelId != null -> ({ navController.navigate(ArtistDestination(channelId = channelId)) })
-            moreEndpoint != null -> ({ navController.navigateToMoreEndpoint(moreEndpoint, data.title) })
             else -> null
         }
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -653,7 +653,7 @@ fun HomeItemContentPlaylist(
             .wrapContentSize()
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
+            .clickable(interactionSource = null, indication = if (tvDevice) null else LocalIndication.current) {
                 onClick()
             },
     ) {
@@ -691,7 +691,7 @@ fun HomeItemContentPlaylist(
                     is MonthlyRecapItem -> null
                     else -> null
                 }
-            Box(Modifier.tvFocusGlowAnchor()) {
+            Box {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -772,6 +772,7 @@ fun HomeItemContentPlaylist(
                     modifier =
                         (if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier.size(thumbSize))
                             .aspectRatio(1f)
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),
@@ -1046,6 +1047,8 @@ fun HomeItemSong(
                 .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
+                    interactionSource = null,
+                    indication = if (tvDevice) null else LocalIndication.current,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
@@ -1064,7 +1067,7 @@ fun HomeItemSong(
                         it
                     }
                 }
-            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
+            Box(Modifier.align(Alignment.CenterHorizontally)) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -1081,6 +1084,7 @@ fun HomeItemSong(
                     modifier =
                         Modifier
                             .then(if (fillMaxWidth) Modifier.fillMaxWidth().aspectRatio(1f) else Modifier.size(artSize))
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),
@@ -1166,6 +1170,8 @@ fun HomeItemVideo(
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
+                interactionSource = null,
+                indication = if (tvDevice) null else LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
@@ -1177,7 +1183,7 @@ fun HomeItemVideo(
                     .heightIn(min = if (tvDevice) TvDimens.SquareCard + 70.dp else 230.dp),
         ) {
             val thumb = data.thumbnails.lastOrNull()?.url
-            Box(Modifier.align(Alignment.CenterHorizontally).tvFocusGlowAnchor()) {
+            Box(Modifier.align(Alignment.CenterHorizontally)) {
                 AsyncImage(
                     model =
                         ImageRequest
@@ -1200,6 +1206,7 @@ fun HomeItemVideo(
                                     else -> Modifier.height(160.dp)
                                 },
                             ).aspectRatio(16f / 9f)
+                            .tvFocusGlowAnchor()
                             .clip(
                                 if (tvDevice) TvShapes.Card else RoundedCornerShape(10.dp),
                             ).hoverZoom(hovered && !tvDevice),
@@ -1295,7 +1302,7 @@ fun HomeItemArtist(
             .fillMaxSize()
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
+            .clickable(interactionSource = null, indication = if (tvDevice) null else LocalIndication.current) {
                 onClick()
             },
     ) {

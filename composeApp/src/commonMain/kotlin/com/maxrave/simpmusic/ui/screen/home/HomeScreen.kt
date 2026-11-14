@@ -2,7 +2,11 @@ package com.maxrave.simpmusic.ui.screen.home
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import com.maxrave.simpmusic.ui.tv.TvBackdropCrossfade as Crossfade
+import com.maxrave.simpmusic.ui.tv.tvBackdropEnter
+import com.maxrave.simpmusic.ui.tv.tvBackdropExit
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -183,6 +187,11 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.focus.focusRequester
 import com.maxrave.simpmusic.ui.component.tvHeaderItem
 import com.maxrave.simpmusic.ui.tv.HomeHeaderItem
@@ -955,6 +964,8 @@ fun HomeScreen(
                                     if (item.title == stringResource(Res.string.quick_picks)) {
                                         AnimatedVisibility(
                                             modifier = tvSectionInset,
+                                            enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                            exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                             visible =
                                                 homeData.find {
                                                     it.title ==
@@ -1037,6 +1048,8 @@ fun HomeScreen(
                             items(newRelease, key = { it.hashCode() }) {
                                 AnimatedVisibility(
                                     visible = newRelease.isNotEmpty(),
+                                    enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                    exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                 ) {
                                     Box(
                                         modifier =
@@ -1053,6 +1066,8 @@ fun HomeScreen(
                             item {
                                 AnimatedVisibility(
                                     visible = moodMomentAndGenre != null,
+                                    enter = tvBackdropEnter(fadeIn() + expandIn()),
+                                    exit = tvBackdropExit(fadeOut() + shrinkOut()),
                                 ) {
                                     Box(
                                         modifier =
@@ -1382,13 +1397,15 @@ private const val CHIP_FADE_STEPS = 24
  * offers the log-in.
  */
 @Composable
-private fun HomeAccountButton(
+internal fun HomeAccountButton(
     accountName: String?,
     thumbnailUrl: String?,
     navController: NavController,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var ownsTvFocus by remember { mutableStateOf(false) }
+    val railFocus = com.maxrave.simpmusic.ui.tv.LocalTvNavigation.current?.railFocus
     // Sign-out blanks the stored account name, so a blank name is the signed-out state.
     val signedIn = !accountName.isNullOrBlank()
     val displayName = if (signedIn) accountName.orEmpty() else stringResource(Res.string.guest)
@@ -1404,13 +1421,18 @@ private fun HomeAccountButton(
         )
     Box {
         if (LocalTvDevice.current) {
-            var focused by remember { mutableStateOf(false) }
             Box(
                 modifier = modifier
                     .size(44.dp)
                     .tvFocus(TvFocusStyle.Control, CircleShape)
-                    .onFocusChanged { focused = it.isFocused }
-                    .background(if (focused) TvPalette.FocusFill else Color.Transparent, CircleShape)
+                    .onFocusChanged { ownsTvFocus = it.isFocused }
+                    .onPreviewKeyEvent { event ->
+                        // Use the same direct entry as BACK, before directional exit redirects.
+                        // A rejected request leaves normal key/focus handling available.
+                        ownsTvFocus && event.key == Key.DirectionLeft && event.type == KeyEventType.KeyDown &&
+                            railFocus?.requestFocus() == true
+                    }
+                    .clip(CircleShape)
                     .clickable { menuOpen = true }
                     .padding(3.dp),
                 contentAlignment = Alignment.Center,

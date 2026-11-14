@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -130,12 +133,26 @@ private fun AmbientPicture(
                 .build()
         }
     val scene = LocalTvScene.current
+    val scope = rememberCoroutineScope()
     AsyncImage(
         model = request,
         contentDescription = null,
         contentScale = ContentScale.FillBounds,
         // The same blurred bitmap becomes the body of every glass surface (TvSceneGlass).
-        onSuccess = { state -> scene?.takeIf { it.acceptsArtwork(model) }?.let { state.result.image.publishTo(it) } },
+        onSuccess = { state ->
+            scene?.takeIf { it.acceptsArtwork(model) }?.let { current ->
+                state.result.image.publishTo(current)
+                current.backdrop?.let { backdrop ->
+                    backdrop.request()
+                    // Crossfade animates an independent child layer. Request its final pixels once,
+                    // instead of watching every unrelated app snapshot or polling animation frames.
+                    scope.launch {
+                        delay(fadeMs.toLong())
+                        if (current.acceptsArtwork(model)) backdrop.request()
+                    }
+                }
+            }
+        },
         filterQuality = FilterQuality.High,
         alpha = AMBIENT_ALPHA,
         modifier = modifier,
