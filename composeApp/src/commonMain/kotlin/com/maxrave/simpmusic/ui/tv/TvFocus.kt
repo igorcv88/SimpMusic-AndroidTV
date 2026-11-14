@@ -160,6 +160,7 @@ private class TvFocusState {
 private object TvFocusLayerKey
 
 private object TvFocusDrawKey
+private object TvCardFocusDrawKey
 
 private data class TvFocusLayerElement(
     val state: TvFocusState,
@@ -314,7 +315,8 @@ private class TvFocusDrawNode(
     GlobalPositionAwareModifierNode,
     CompositionLocalConsumerModifierNode,
     TraversableNode {
-    override val traverseKey: Any = TvFocusDrawKey
+    override val traverseKey: Any
+        get() = if (style == TvFocusStyle.Card) TvCardFocusDrawKey else TvFocusDrawKey
 
     private val glass = TvGlassCache()
     private val rim = TvGlassCache()
@@ -341,7 +343,7 @@ private class TvFocusDrawNode(
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         if (!isAttached || !coordinates.isAttached) return
         if (placement.update(coordinates)) {
-            overlay?.request()
+            overlay?.takeIf { it.ownsRoot(coordinates) }?.request()
             if (state.shownProgress() > 0.001f) invalidateDraw()
         }
     }
@@ -370,7 +372,7 @@ private class TvFocusDrawNode(
     }
 
     override fun ContentDrawScope.draw() {
-        val target = overlay
+        val target = overlay?.takeIf { it.ownsRoot(requireLayoutCoordinates()) }
         val layer = contentLayer
         if (target != null && layer != null) {
             if (state.shownProgress() <= 0.001f) {
@@ -387,7 +389,7 @@ private class TvFocusDrawNode(
             target.overlays[this@TvFocusDrawNode] = {
                 if (isAttached && state.shownProgress() > 0.001f) {
                     val coordinates = requireLayoutCoordinates()
-                    if (coordinates.isAttached) {
+                    if (target.ownsRoot(coordinates)) {
                         placement.update(coordinates)
                         val origin = coordinates.localToRoot(Offset.Zero) - target.origin
                         val corner = coordinates.localToRoot(Offset(layer.size.width.toFloat(), layer.size.height.toFloat())) - target.origin
@@ -397,7 +399,7 @@ private class TvFocusDrawNode(
                             translate(origin.x, origin.y)
                             scale((corner.x - origin.x) / layer.size.width, (corner.y - origin.y) / layer.size.height, pivot = Offset.Zero)
                         }) {
-                            drawDecoration(layer.size.width.toFloat(), layer.size.height.toFloat())
+                            drawDecoration(layer.size.width.toFloat(), layer.size.height.toFloat(), currentValueOf(LocalTvScene))
                             if (style != TvFocusStyle.Card) drawLayer(layer)
                             drawCardRim(Size(layer.size.width.toFloat(), layer.size.height.toFloat()))
                         }
@@ -409,12 +411,16 @@ private class TvFocusDrawNode(
             target.overlayChanged()
             return
         }
-        drawDecoration(size.width, size.height)
+        if (overlay?.overlays?.remove(this) != null) overlay?.overlayChanged()
+        overlay?.reads?.clear(this)
+        // A Popup/Dialog inherits locals but has a different coordinate root. Keep its material
+        // local and neutral rather than sampling the app window with foreign coordinates.
+        drawDecoration(size.width, size.height, if (overlay == null) currentValueOf(LocalTvScene) else null)
         drawContent()
         drawCardRim()
     }
 
-    private fun DrawScope.drawDecoration(width: Float, height: Float) {
+    private fun DrawScope.drawDecoration(width: Float, height: Float, scene: TvScene?) {
         val progress = state.shownProgress()
         if (progress > 0.001f) {
             when (style) {
@@ -427,7 +433,7 @@ private class TvFocusDrawNode(
                     drawSceneGlass(
                         outline = resolveOutline(Size(width, height)),
                         cache = glass,
-                        scene = currentValueOf(LocalTvScene),
+                        scene = scene,
                         origin = placement.origin,
                         root = placement.root,
                         kind = TvGlassKind.Focus,
@@ -519,7 +525,8 @@ private class TvGlowAnchorNode :
         // Lazy reuse can deliver a queued placement after this modifier has left the tree.
         // Ancestor traversal itself requires attachment, before the draw-node callback runs.
         if (!isAttached || !coordinates.isAttached) return
-        (findNearestAncestor(TvFocusDrawKey) as? TvFocusDrawNode)?.onGlowAnchorPlaced(coordinates)
+        // Auto-Backing marks on clickables must not take the artwork from its outer Card mark.
+        (findNearestAncestor(TvCardFocusDrawKey) as? TvFocusDrawNode)?.onGlowAnchorPlaced(coordinates)
     }
 }
 

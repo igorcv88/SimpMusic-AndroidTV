@@ -22,13 +22,19 @@ When Back changes the active destination while the rail owns focus, the resumed 
 
 The TV profile uses its existing circular focus shape without a second fill over the focus material. Focus material uses a lighter fill, sheen, and rim. Settings removes TV row dividers and stops clipping the first focused row's top edge; mobile retains its existing dividers and clipping. The rail removes its selection dot and persistent selected tile fill, keeps selected icon/text emphasis, and insets its smaller brand mark with the label aligned to the entries. A section with a More destination exposes that destination once through More; a distinct channel destination can still be opened from its title.
 
-These are TV-only presentation changes. The supplied screenshots and videos were inspected locally and are not included in Git. Their device appearance after these changes has not been verified.
+These are TV-only presentation changes. Supplied and newly collected private screenshots and videos remain outside Git. The subsequent API 30 supplement and physical correction work are described below.
 
 ## Material limits and physical acceptance
 
-Eligible TV Home surfaces can reuse the existing preblurred ambient-artwork bitmap in screen coordinates. Settings and other destinations without an eligible scene use a neutral drawn material. This change adds no general live backdrop capture or blur for arbitrary content on API 30.
+The initial stability commits reused Home's preblurred ambient scene and did not supply arbitrary live backdrop blur. The subsequent [API 30 backdrop supplement](ANDROID_TV_API30_BACKDROP.md) replaces that limitation with an isolated software producer on eligible TV content. It excludes rail/focus materials, performs bounded worker blur and samples the current route. Fullscreen playback disables that producer; it cannot capture a separate video SurfaceView.
 
-Physical acceptance remains outstanding for rapid lazy-list reuse, profile focus transitions, actual Android IME opening/Back/OK behavior, Search-to-Home Back transitions, crash-screen restart, playback notification re-entry, and the final Settings/rail appearance. No TV connection, installation, restart, data clearing, or new device capture was performed for this change.
+The owner subsequently authorized iterative installation and physical testing. A signed debug APK at d790f54e was installed on the Philips Android 11/API 30 without uninstalling or clearing app data. Private captures show source-correlated rail blur in Home, Search and Settings. The native Search keyboard opened, accepted input and hid with Back; the following Back opened the Search rail. Settings LEFT entered its rail. Existing remote playlists loaded.
+
+That physical candidate still showed a Home artwork rim around the full card text slot, square native indication outside the circular avatar and Settings corners, and an unsuccessful avatar LEFT handoff. These findings triggered a further scoped correction; the earlier renderer tests alone did not establish their device appearance. Final geometry acceptance (see the correction wave below), rapid lazy reuse, crash-screen restart, playback notification re-entry and physical official-rendition switching remain pending. No data clearing or GitHub Release publication was performed.
+
+The final geometry correction wave is implemented in the commit that follows b3c50beb. Home artwork focus rims are bound to the artwork (the outer Card mark owns the anchor, so auto-backing marks on clickables no longer take it), the native indication is removed on TV cards, the avatar is clipped to a circle, and Settings rows take their corners from the actual group body, including rows nested in inner columns. Popup and Dialog windows keep their focus and panel material in their own root rather than registering with the main-window backdrop. LEFT on the Home avatar requests the rail directly and falls back to normal focus handling if the request is rejected.
+
+Validation of that wave: the 86 TV JVM tests across 22 suites passed with no failures or skips, together with TV and mobile debug Kotlin compilation. Three of those tests initially asserted through simulated arrow keys and a Dialog scrim, neither of which behaves as on a device in the JVM harness (a simulated arrow press does not trigger default focus movement); they now call the same focus entry points the production code uses (`restoreContent()` for the rail's exit toward content, `FocusManager.moveFocus` for the fallback) and sample pixels the foreign window does not cover. Rail RIGHT through real D-pad input, the Escape/Back dismissal of the avatar menu and the on-screen result of the final wave were not exercised by these tests, and the final wave has not been installed on the Philips; those remain physical acceptance items.
 
 ## References
 
@@ -38,7 +44,7 @@ Physical acceptance remains outstanding for rapid lazy-list reuse, profile focus
 
 ## Validation performed
 
-Using Android Studio's JBR on Windows, the following command passed with `JAVA_TOOL_OPTIONS=-Djava.awt.headless=true`:
+The initial stability commits passed the following command using Android Studio's JBR on Windows with `JAVA_TOOL_OPTIONS=-Djava.awt.headless=true`:
 
 ```powershell
 ./gradlew.bat :composeApp:jvmTest --tests '*com.maxrave.simpmusic.ui.tv.*' :tvAndroidApp:compileDebugKotlin :androidApp:compileDebugKotlin --console=plain
@@ -46,4 +52,6 @@ Using Android Studio's JBR on Windows, the following command passed with `JAVA_T
 
 It ran 56 TV JVM tests across 15 suites with no failures or skips, and compiled both Android app entry points plus the shared Android code. The Compose editor test uses an offscreen Skiko scene and passed in the forced headless JVM. Nine focused Python manifest/release-version tests passed. `git diff --check` passed.
 
-A broader JVM run encountered the existing Windows failure `NetworkFirstInterceptorTest.localFilesAreNotSentThroughTheNetworkFirstPath`: Coil returned `ErrorResult` for the local-file fixture where the test expects `SuccessResult`. The unrelated image-cache code/test was not changed or excluded. These checks do not include signed-release packaging, installation, or physical-device acceptance.
+A broader JVM run encountered the existing Windows failure `NetworkFirstInterceptorTest.localFilesAreNotSentThroughTheNetworkFirstPath`: Coil returned `ErrorResult` for the local-file fixture where the test expects `SuccessResult`. The unrelated image-cache code/test was not changed or excluded.
+
+The API 30 supplement at d790f54e passed 69 focused TV JVM tests and shared JVM/Android plus TV/mobile debug Kotlin compilation. The player addition at b3c50beb, with core35c7a114, passed 38 domain, 3 exact-counterpart, 15 Media3 and 70 TV JVM tests, plus TV/mobile debug Kotlin compilation. Independent static reviews approved those implementations without findings. A full local data run also exposed an unchanged BrowserCookie synthetic ordering failure; focused counterpart tests pass. These checks do not exercise the real ExoPlayer candidate transaction or prove physical switching in either direction. Final correction/build/device results must be reported against their exact later commit.

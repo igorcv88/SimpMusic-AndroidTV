@@ -187,6 +187,11 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.focus.focusRequester
 import com.maxrave.simpmusic.ui.component.tvHeaderItem
 import com.maxrave.simpmusic.ui.tv.HomeHeaderItem
@@ -1392,13 +1397,15 @@ private const val CHIP_FADE_STEPS = 24
  * offers the log-in.
  */
 @Composable
-private fun HomeAccountButton(
+internal fun HomeAccountButton(
     accountName: String?,
     thumbnailUrl: String?,
     navController: NavController,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var ownsTvFocus by remember { mutableStateOf(false) }
+    val railFocus = com.maxrave.simpmusic.ui.tv.LocalTvNavigation.current?.railFocus
     // Sign-out blanks the stored account name, so a blank name is the signed-out state.
     val signedIn = !accountName.isNullOrBlank()
     val displayName = if (signedIn) accountName.orEmpty() else stringResource(Res.string.guest)
@@ -1418,6 +1425,14 @@ private fun HomeAccountButton(
                 modifier = modifier
                     .size(44.dp)
                     .tvFocus(TvFocusStyle.Control, CircleShape)
+                    .onFocusChanged { ownsTvFocus = it.isFocused }
+                    .onPreviewKeyEvent { event ->
+                        // Use the same direct entry as BACK, before directional exit redirects.
+                        // A rejected request leaves normal key/focus handling available.
+                        ownsTvFocus && event.key == Key.DirectionLeft && event.type == KeyEventType.KeyDown &&
+                            railFocus?.requestFocus() == true
+                    }
+                    .clip(CircleShape)
                     .clickable { menuOpen = true }
                     .padding(3.dp),
                 contentAlignment = Alignment.Center,

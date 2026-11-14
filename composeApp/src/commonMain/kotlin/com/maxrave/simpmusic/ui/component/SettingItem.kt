@@ -22,6 +22,8 @@ import com.maxrave.simpmusic.ui.tv.tvFocus
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,7 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toSize
 import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.extension.greyScale
 import com.maxrave.simpmusic.getPlatform
@@ -49,6 +53,12 @@ import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
 import com.maxrave.simpmusic.ui.tv.tvClickable as clickable
+
+private class SettingGroupGeometry {
+    var bounds by mutableStateOf<Rect?>(null)
+}
+
+private val LocalSettingGroupGeometry = staticCompositionLocalOf<SettingGroupGeometry?> { null }
 
 @Composable
 fun SettingItem(
@@ -72,7 +82,12 @@ fun SettingItem(
     // setUsedAccount, logOutAllYouTube, setAIApiKey), which is a real event and cannot misfire.
     val tvDevice = LocalTvDevice.current
     val groupEdgeTolerance = with(LocalDensity.current) { 1.dp.toPx() } + 1f
-    var rowShape by remember { mutableStateOf(SettingGroupShape) }
+    val groupBounds = LocalSettingGroupGeometry.current?.bounds
+    var rowBounds by remember { mutableStateOf<Rect?>(null) }
+    val rowShape = if (groupBounds != null && rowBounds != null) {
+        settingRowShape(rowBounds!!.top <= groupBounds.top + groupEdgeTolerance,
+            rowBounds!!.bottom >= groupBounds.bottom - groupEdgeTolerance)
+    } else SettingGroupShape
     val dividerColor = MaterialTheme.colorScheme.outlineVariant
     // The disabled colour the sheets use (SurfaceDarkColors.disabled). TextStyle.greyScale() alone
     // left a disabled title as bright as an enabled one, because the title passes its own colour,
@@ -84,12 +99,12 @@ fun SettingItem(
             // card's far edge (mirrored right-to-left). SettingGroup leaves the first row's undrawn,
             // so a row hidden by a condition never leaves a stray line at the top of the card.
             .then(if (tvDevice) Modifier.onGloballyPositioned { coordinates ->
-                val parent = coordinates.parentLayoutCoordinates
-                if (coordinates.isAttached && parent?.isAttached == true) {
-                    val top = coordinates.positionInParent().y
-                    rowShape = settingRowShape(top <= groupEdgeTolerance, top + coordinates.size.height >= parent.size.height - groupEdgeTolerance)
+                if (coordinates.isAttached) {
+                    // Unclipped coordinates keep nested/partially scrolled rows relative to their
+                    // actual group body, not a Column or AnimatedVisibility's temporary bounds.
+                    rowBounds = Rect(coordinates.positionInRoot(), coordinates.size.toSize())
                 }
-            }.tvFocus(TvFocusStyle.Row, rowShape) else Modifier)
+            }.tvFocus(TvFocusStyle.Row, rowShape).clip(rowShape) else Modifier)
             .drawBehind {
                 if (tvDevice) return@drawBehind
                 val y = SettingDividerThickness.toPx() / 2
@@ -187,6 +202,7 @@ fun SettingGroup(
 ) {
     val cardColor = settingGroupColor()
     val tvDevice = LocalTvDevice.current
+    val geometry = remember { SettingGroupGeometry() }
     Column(modifier.fillMaxWidth().padding(top = 24.dp)) {
         Text(
             text = title.toUpperCase(Locale.current),
@@ -194,12 +210,16 @@ fun SettingGroup(
             style = typo().labelMedium.copy(fontWeight = FontWeight.Normal),
             modifier = Modifier.padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, bottom = 8.dp),
         )
+        CompositionLocalProvider(LocalSettingGroupGeometry provides geometry) {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .then(if (!tvDevice) Modifier.clip(SettingGroupShape) else Modifier)
                     .background(cardColor.copy(alpha = 0.5f), SettingGroupShape)
+                    .then(if (tvDevice) Modifier.onGloballyPositioned { coordinates ->
+                        if (coordinates.isAttached) geometry.bounds = Rect(coordinates.positionInRoot(), coordinates.size.toSize())
+                    } else Modifier)
                     .then(if (tvDevice) Modifier.padding(1.dp) else Modifier)
                     .drawWithContent {
                         // The first row's hairline would sit on the card's own edge, so that strip is
@@ -212,6 +232,7 @@ fun SettingGroup(
                     },
             content = content,
         )
+        }
         if (footer != null) {
             Box(Modifier.padding(start = SettingRowPaddingHorizontal, end = SettingRowPaddingHorizontal, top = 8.dp)) {
                 footer()

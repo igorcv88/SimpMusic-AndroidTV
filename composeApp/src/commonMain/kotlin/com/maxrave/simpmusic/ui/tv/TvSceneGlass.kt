@@ -286,7 +286,7 @@ private class TvSceneGlassNode(
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
         if (placement.update(coordinates)) {
-            overlay?.request()
+            overlay?.takeIf { it.ownsRoot(coordinates) }?.request()
             invalidateDraw()
         }
     }
@@ -299,7 +299,7 @@ private class TvSceneGlassNode(
                     outlineSize = size
                     outlineShape = shape
                 }
-        val target = overlay
+        val target = overlay?.takeIf { it.ownsRoot(requireLayoutCoordinates()) }
         val layer = content
         if (target != null && layer != null) {
             layer.record { target.observeContent(this@TvSceneGlassNode) { this@draw.drawContent() } }
@@ -307,7 +307,7 @@ private class TvSceneGlassNode(
             target.overlays[this@TvSceneGlassNode] = {
                 if (isAttached) {
                     val coordinates = requireLayoutCoordinates()
-                    if (coordinates.isAttached) {
+                    if (target.ownsRoot(coordinates)) {
                     placement.update(coordinates)
                     val origin = coordinates.localToRoot(Offset.Zero) - target.origin
                     val corner = coordinates.localToRoot(Offset(layer.size.width.toFloat(), layer.size.height.toFloat())) - target.origin
@@ -329,6 +329,8 @@ private class TvSceneGlassNode(
             target.overlayChanged()
             return
         }
+        if (overlay?.overlays?.remove(this) != null) overlay?.overlayChanged()
+        overlay?.reads?.clear(this)
         if (elevated) {
             val ring = shadow ?: Stroke(TvDimens.GlassShadow.toPx() / PANEL_SHADOW_RINGS).also { shadow = it }
             drawSoftHalo(
@@ -340,7 +342,8 @@ private class TvSceneGlassNode(
                 dropPx = PANEL_SHADOW_DROP.toPx(),
             )
         }
-        drawSceneGlass(resolved, cache, currentValueOf(LocalTvScene), placement.origin, placement.root, TvGlassKind.Panel)
+        drawSceneGlass(resolved, cache, if (overlay == null) currentValueOf(LocalTvScene) else null,
+            placement.origin, placement.root, TvGlassKind.Panel)
         drawContent()
     }
 }

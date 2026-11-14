@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -33,11 +35,13 @@ internal class TvBackdropGate {
         private set
     private var route: Any? = null
     private var size = Size.Zero
+    private var sourceRoot: Any? = null
     private var lastStart: Long? = null
-    fun reset(route: Any?, size: Size): Boolean {
-        if (this.route == route && this.size == size) return false
+    fun reset(route: Any?, size: Size, sourceRoot: Any? = null): Boolean {
+        if (this.route == route && this.size == size && this.sourceRoot === sourceRoot) return false
         this.route = route
         this.size = size
+        this.sourceRoot = sourceRoot
         generation++
         return true
     }
@@ -94,6 +98,15 @@ internal class TvBackdrop(val source: GraphicsLayer, val sampled: GraphicsLayer)
         Snapshot.withoutReadObservation { overlayVersion.intValue++ }
     }
     var origin = Offset.Zero
+    private var sourceRoot: LayoutCoordinates? = null
+    fun bindRoot(root: LayoutCoordinates) {
+        if (sourceRoot !== root) {
+            sourceRoot = root
+            reset(route)
+        }
+    }
+    fun ownsRoot(coordinates: LayoutCoordinates): Boolean =
+        coordinates.isAttached && sourceRoot?.isAttached == true && coordinates.findRootCoordinates() === sourceRoot
     var size = Size.Zero
     var route: Any? = null
     var recorded = false
@@ -107,7 +120,7 @@ internal class TvBackdrop(val source: GraphicsLayer, val sampled: GraphicsLayer)
     fun reset(route: Any?, size: Size = this.size) {
         this.route = route
         this.size = size
-        if (gate.reset(route, size)) {
+        if (gate.reset(route, size, sourceRoot)) {
             recorded = false
             frameState.value = null
             request()
@@ -203,6 +216,7 @@ internal fun Modifier.tvBackdropSource(backdrop: TvBackdrop?): Modifier {
     if (backdrop == null) return this
     return graphicsLayer().onGloballyPositioned {
         if (it.isAttached) {
+            backdrop.bindRoot(it.findRootCoordinates())
             val position = it.positionInRoot()
             if (backdrop.origin != position) {
                 backdrop.origin = position

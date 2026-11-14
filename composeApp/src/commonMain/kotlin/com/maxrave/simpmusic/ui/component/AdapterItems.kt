@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.focusable
@@ -652,7 +653,7 @@ fun HomeItemContentPlaylist(
             .wrapContentSize()
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
+            .clickable(interactionSource = null, indication = if (tvDevice) null else LocalIndication.current) {
                 onClick()
             },
     ) {
@@ -1046,6 +1047,8 @@ fun HomeItemSong(
                 .focusable(!LocalTvDevice.current)
                 .clip(RoundedCornerShape(8.dp))
                 .combinedClickable(
+                    interactionSource = null,
+                    indication = if (tvDevice) null else LocalIndication.current,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 ),
@@ -1167,6 +1170,8 @@ fun HomeItemVideo(
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
             .combinedClickable(
+                interactionSource = null,
+                indication = if (tvDevice) null else LocalIndication.current,
                 onClick = onClick,
                 onLongClick = onLongClick,
             ),
@@ -1297,7 +1302,7 @@ fun HomeItemArtist(
             .fillMaxSize()
             .focusable(!LocalTvDevice.current)
             .clip(RoundedCornerShape(8.dp))
-            .clickable {
+            .clickable(interactionSource = null, indication = if (tvDevice) null else LocalIndication.current) {
                 onClick()
             },
     ) {

@@ -14,6 +14,15 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TvBackdropTest {
+    @Test fun generationRejectsAReplacementSourceRoot() {
+        val gate = TvBackdropGate()
+        val first = Any()
+        gate.reset("home", Size(100f, 80f), first)
+        val generation = gate.generation
+        assertFalse(gate.reset("home", Size(100f, 80f), first))
+        assertTrue(gate.reset("home", Size(100f, 80f), Any()))
+        assertFalse(gate.accepts(generation))
+    }
     @Test fun generationRejectsObsoleteRouteAndSize() {
         val gate = TvBackdropGate()
         gate.reset("home", Size(800f, 400f))
