@@ -73,11 +73,7 @@ import com.maxrave.domain.data.model.radiobuilder.RadioTuningStyle
 import com.maxrave.simpmusic.ui.tv.LocalTvDevice
 import com.maxrave.simpmusic.ui.tv.tvDestinationEntry
 import com.maxrave.simpmusic.ui.tv.tvFocusIndicator
-import com.maxrave.simpmusic.Platform
-import com.maxrave.simpmusic.expect.ui.DesktopMiniPlayerClearance
 import com.maxrave.simpmusic.expect.ui.PlatformBackHandler
-import com.maxrave.simpmusic.expect.ui.VerticalScrollBar
-import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.Check
@@ -87,7 +83,6 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.Tune
 import com.maxrave.simpmusic.ui.navigation.destination.home.RadioBuilderDestination
 import com.maxrave.simpmusic.ui.navigation.destination.list.PlaylistDestination
-import com.maxrave.simpmusic.ui.theme.ArtworkShape
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.RadioBuilderUIState
 import com.maxrave.simpmusic.viewModel.RadioBuilderViewModel
@@ -116,9 +111,7 @@ fun RadioBuilderScreen(
     val selectedChips by viewModel.selectedChips.collectAsStateWithLifecycle()
     var tuning by rememberSaveable { mutableStateOf(false) }
     val page = (uiState as? RadioBuilderUIState.Success)?.page
-    // Desktop's capsule player floats over the page; on Android the bottom bar is in innerPadding.
-    val bottomClearance =
-        if (getPlatform() == Platform.Desktop) DesktopMiniPlayerClearance else innerPadding.calculateBottomPadding()
+    val bottomClearance = innerPadding.calculateBottomPadding()
 
     PlatformBackHandler(enabled = tuning) { tuning = false }
 
@@ -235,7 +228,6 @@ private fun SeedGrid(
                 )
             }
         }
-        VerticalScrollBar(scrollState = gridState)
     }
 }
 
@@ -247,9 +239,10 @@ private fun SeedItem(
     modifier: Modifier = Modifier,
 ) {
     val isArtist = seed.kind == RadioSeedKind.ARTIST
-    val shape: Shape = if (isArtist) CircleShape else ArtworkShape
+    val artworkShape = RoundedCornerShape(12.dp)
+    val shape: Shape = if (isArtist) CircleShape else artworkShape
     Column(
-        modifier.tvFocusIndicator(ArtworkShape).clip(ArtworkShape).clickable(onClick = onClick),
+        modifier.tvFocusIndicator(artworkShape).clip(artworkShape).clickable(onClick = onClick),
         horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         Box(
@@ -346,7 +339,6 @@ private fun TuningPage(
                 }
             }
         }
-        VerticalScrollBar(scrollState = scroll)
     }
 }
 
