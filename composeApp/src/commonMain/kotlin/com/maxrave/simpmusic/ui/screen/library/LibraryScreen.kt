@@ -167,6 +167,11 @@ fun LibraryScreen(
         LaunchedEffect(Unit) { viewModel.refreshCachedPreview() }
     }
 
+    val replayMixPreview by viewModel.replayMixPreview.collectAsStateWithLifecycle()
+    LaunchedEffect(localTrackingEnabled) {
+        if (localTrackingEnabled) viewModel.refreshReplayMixPreview()
+    }
+
     val selectionState = rememberSongSelectionState()
     val selectionViewModel: SongSelectionViewModel = koinViewModel()
     val tasteViewModel: TasteViewModel = koinViewModel()
@@ -293,7 +298,13 @@ fun LibraryScreen(
                         state = state,
                     ) {
                         item(key = "collections") {
-                            LibraryTilingBox(navController, libraryOverview, cachedPreview)
+                            LibraryTilingBox(
+                                navController,
+                                libraryOverview,
+                                cachedPreview,
+                                replayMix = replayMixPreview,
+                                showReplayMix = localTrackingEnabled,
+                            )
                         }
 
                         // The reading is drawn from playback_event, so the card follows the same
