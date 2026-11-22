@@ -79,7 +79,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           chmod +x gradlew
-          ./gradlew :composeApp:jvmTest :composeApp:compileAndroidMain :tvAndroidApp:processDebugMainManifest --no-daemon --max-workers=2
+          ./gradlew :composeApp:jvmTest :kotlinYtmusicScraper:jvmTest :domain:jvmTest :media3:testDebugUnitTest :tvAndroidApp:assembleDebug --no-daemon --max-workers=2
 
       # One Gradle invocation: assembleRelease already compiles Android sources and processes
       # the release manifest. The previous two invocations each configured the entire KMP build.
